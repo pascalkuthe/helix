@@ -2,7 +2,12 @@ use crate::{
     alt,
     compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
-    ui::{self, document::render_document, fuzzy_match::FuzzyQuery, EditorView},
+    ui::{
+        self,
+        document::{render_document, LineDecoration, LinePos, TextRenderer},
+        fuzzy_match::FuzzyQuery,
+        EditorView,
+    },
 };
 use futures_util::future::BoxFuture;
 use tui::{
@@ -305,6 +310,30 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 }
                 highlights = Box::new(helix_core::syntax::merge(highlights, spans));
             }
+            let mut decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
+
+            // TODO: avoid set_style and instead handle trough specical LineDecoration function instead?
+            if let Some((start, end)) = range {
+                let style = cx
+                    .editor
+                    .theme
+                    .try_get("ui.highlight")
+                    .unwrap_or_else(|| cx.editor.theme.get("ui.selection"));
+                let draw_highlight = move |renderer: &mut TextRenderer, pos: LinePos| {
+                    log::error!("{start} {end} {}", pos.doc_line);
+                    if (start..=end).contains(&pos.doc_line) {
+                        let area = Rect::new(
+                            renderer.viewport.x,
+                            renderer.viewport.y + pos.visual_line,
+                            renderer.viewport.width,
+                            1,
+                        );
+                        renderer.surface.set_style(area, style)
+                    }
+                };
+                decorations.push(Box::new(draw_highlight))
+            }
+
             render_document(
                 surface,
                 inner,
@@ -313,26 +342,26 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 &TextAnnotations::default(),
                 highlights,
                 &cx.editor.theme,
-                &mut [],
+                &mut decorations,
             );
 
-            // highlight the line
-            if let Some((start, end)) = range {
-                let offset = start.saturating_sub(first_line) as u16;
-                surface.set_style(
-                    Rect::new(
-                        inner.x,
-                        inner.y + offset,
-                        inner.width,
-                        (end.saturating_sub(start) as u16 + 1)
-                            .min(inner.height.saturating_sub(offset)),
-                    ),
-                    cx.editor
-                        .theme
-                        .try_get("ui.highlight")
-                        .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
-                );
-            }
+            // // highlight the line
+            // if let Some((start, end)) = range {
+            //     let offset = start.saturating_sub(first_line) as u16;
+            //     surface.set_style(
+            //         Rect::new(
+            //             inner.x,
+            //             inner.y + offset,
+            //             inner.width,
+            //             (end.saturating_sub(start) as u16 + 1)
+            //                 .min(inner.height.saturating_sub(offset)),
+            //         ),
+            //         cx.editor
+            //             .theme
+            //             .try_get("ui.highlight")
+            //             .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
+            //     );
+            // }
         }
     }
 
