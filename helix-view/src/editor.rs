@@ -19,6 +19,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
     borrow::Cow,
+    cell::Cell,
     collections::{BTreeMap, HashMap},
     io::stdin,
     num::NonZeroUsize,
@@ -769,6 +770,7 @@ pub struct Editor {
     /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be aquired
     pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
+    pub cursor_cache: Cell<Option<Option<Position>>>,
 }
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
@@ -866,6 +868,7 @@ impl Editor {
             config_events: unbounded_channel(),
             redraw_handle: Default::default(),
             needs_redraw: false,
+            cursor_cache: Cell::new(None),
         }
     }
 
@@ -1402,7 +1405,11 @@ impl Editor {
             .selection(view.id)
             .primary()
             .cursor(doc.text().slice(..));
-        if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
+        let pos = self
+            .cursor_cache
+            .get()
+            .unwrap_or_else(|| view.screen_coords_at_pos(doc, doc.text().slice(..), cursor));
+        if let Some(mut pos) = pos {
             let inner = view.inner_area(doc);
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;

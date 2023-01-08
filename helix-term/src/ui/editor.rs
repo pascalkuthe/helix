@@ -5,7 +5,7 @@ use crate::{
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
-        document::{render_document, LinePos, TextRenderer},
+        document::{render_document, LinePos, TextRenderer, TranslatedPosition},
         Completion, ProgressSpinners,
     },
 };
@@ -90,6 +90,7 @@ impl EditorView {
 
         let text_annotations = view.text_annotations(doc);
         let mut line_decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
+        let mut translated_positions: Vec<TranslatedPosition> = Vec::new();
 
         // DAP: Highlight current stack frame position
         let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
@@ -185,6 +186,18 @@ impl EditorView {
             &mut line_decorations,
         );
 
+        if is_focused {
+            let cursor = doc
+                .selection(view.id)
+                .primary()
+                .cursor(doc.text().slice(..));
+            // set the cursor_cache to out of view in case the position is not found
+            editor.cursor_cache.set(Some(None));
+            let update_cursor_cache =
+                |_: &mut TextRenderer, pos| editor.cursor_cache.set(Some(Some(pos)));
+            translated_positions.push((cursor, Box::new(update_cursor_cache)));
+        }
+
         // TODO allow smooth scrolling softwrap/virtual text
         render_document(
             surface,
@@ -195,6 +208,7 @@ impl EditorView {
             highlights,
             theme,
             &mut line_decorations,
+            &mut *translated_positions,
         );
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 

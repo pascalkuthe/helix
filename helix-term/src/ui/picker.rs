@@ -343,6 +343,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 highlights,
                 &cx.editor.theme,
                 &mut decorations,
+                &mut [],
             );
 
             // // highlight the line

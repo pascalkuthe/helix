@@ -309,8 +309,10 @@ impl Application {
         let surface = self.terminal.current_buffer_mut();
 
         self.compositor.render(area, surface, &mut cx);
-
         let (pos, kind) = self.compositor.cursor(area, &self.editor);
+        // reset cursor cache
+        self.editor.cursor_cache.set(None);
+
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
         self.terminal.draw(pos, kind).unwrap();
     }

@@ -88,6 +88,8 @@ pub struct LinePos {
     pub start_char_idx: usize,
 }
 
+pub type TranslatedPosition<'a> = (usize, Box<dyn FnMut(&mut TextRenderer, Position) + 'a>);
+
 #[allow(clippy::too_many_arguments)]
 pub fn render_document(
     surface: &mut Surface,
@@ -98,6 +100,7 @@ pub fn render_document(
     highlight_iter: impl Iterator<Item = HighlightEvent>,
     theme: &Theme,
     line_decoration: &mut [Box<dyn LineDecoration + '_>],
+    translated_positions: &mut [TranslatedPosition],
 ) {
     let mut renderer = TextRenderer::new(surface, doc, theme, offset.horizontal_offset, viewport);
     render_text(
@@ -109,6 +112,7 @@ pub fn render_document(
         highlight_iter,
         theme,
         line_decoration,
+        translated_positions,
     )
 }
 
@@ -122,6 +126,7 @@ pub fn render_text<'t>(
     highlight_iter: impl Iterator<Item = HighlightEvent>,
     theme: &Theme,
     line_decorations: &mut [Box<dyn LineDecoration + '_>],
+    translated_positions: &mut [TranslatedPosition],
 ) {
     let (
         Position {
@@ -158,6 +163,7 @@ pub fn render_text<'t>(
     let mut style_span = styles
         .next()
         .unwrap_or_else(|| (Style::default(), usize::MAX));
+    let mut first_visisble_char_idx = 0;
 
     loop {
         // formattter.line_pos returns to line index of the next grapheme
@@ -181,6 +187,7 @@ pub fn render_text<'t>(
                 }
             }
             char_pos += grapheme.doc_chars as usize;
+            first_visisble_char_idx = char_pos;
             continue;
         }
         pos.row -= row_off;
@@ -220,6 +227,18 @@ pub fn render_text<'t>(
             }
         }
         char_pos += grapheme.doc_chars as usize;
+
+        // check if any positions translated on the fly (like cursor) has been reached
+        for (char_idx, callback) in &mut *translated_positions {
+            if *char_idx < char_pos && *char_idx > first_visisble_char_idx {
+                // by replacing the char_index with usize::MAX large number we ensure
+                // that the same position is only translated once
+                // text will never reach usize::MAX as rust memory allocations are limited
+                // to isize::MAX
+                *char_idx = usize::MAX;
+                callback(renderer, pos)
+            }
+        }
 
         let grapheme_style = grapheme
             .highlight
