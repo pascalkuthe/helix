@@ -8,7 +8,12 @@ use unicode_width::UnicodeWidthStr;
 use std::borrow::Cow;
 use std::fmt::{self, Display};
 
+use crate::chars::char_is_word;
 use crate::LineEnding;
+
+pub fn tab_width_at(visual_x: usize, tab_width: u16) -> u16 {
+    tab_width - (visual_x % tab_width as usize) as u16
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// A preprossed Grapheme that is ready for rendering
@@ -23,10 +28,9 @@ pub enum Grapheme<'a> {
 impl<'a> Grapheme<'a> {
     pub fn new(raw: Cow<'a, str>, visual_x: usize, tab_width: u16) -> Grapheme<'a> {
         match &*raw {
-            "\t" => {
-                let width = tab_width - (visual_x % tab_width as usize) as u16;
-                Grapheme::Tab { width }
-            }
+            "\t" => Grapheme::Tab {
+                width: tab_width_at(visual_x, tab_width),
+            },
             " " => Grapheme::Space,
             "\u{00A0}" => Grapheme::Nbsp,
             _ if LineEnding::from_str(&raw).is_some() => Grapheme::Newline,
@@ -39,7 +43,7 @@ impl<'a> Grapheme<'a> {
 
     pub fn change_position(&mut self, visual_x: usize, tab_width: u16) {
         if let Grapheme::Tab { width } = self {
-            *width = tab_width - (visual_x % tab_width as usize) as u16
+            *width = tab_width_at(visual_x, tab_width)
         }
     }
 
@@ -57,8 +61,8 @@ impl<'a> Grapheme<'a> {
         !matches!(&self, Grapheme::Other { .. })
     }
 
-    pub fn is_breaking_space(&self) -> bool {
-        !matches!(&self, Grapheme::Other { .. } | Grapheme::Nbsp)
+    pub fn is_word_boundary(&self) -> bool {
+        !matches!(&self, Grapheme::Other { raw,.. } if raw.chars().all(char_is_word))
     }
 }
 

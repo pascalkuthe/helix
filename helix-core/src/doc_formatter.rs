@@ -71,13 +71,13 @@ impl<'a> FormattedGrapheme<'a> {
         self.grapheme.is_whitespace()
     }
 
-    pub fn is_breaking_space(&self) -> bool {
-        self.grapheme.is_breaking_space()
-    }
-
     /// Returns the approximate visual width of this grapheme,
     pub fn width(&self) -> u16 {
         self.grapheme.width()
+    }
+
+    pub fn is_word_boundary(&self) -> bool {
+        self.grapheme.is_word_boundary()
     }
 }
 
@@ -107,7 +107,7 @@ impl Default for TextFormat {
 
 #[derive(Debug)]
 pub struct DocumentFormatter<'t> {
-    config: TextFormat,
+    text_fmt: TextFormat,
     annotations: &'t TextAnnotations<'t>,
 
     /// The visual position at the end of the last yielded word boundary
@@ -146,7 +146,7 @@ impl<'t> DocumentFormatter<'t> {
     /// to avoid pathological behaviour.
     pub fn new_at_prev_block(
         text: RopeSlice<'t>,
-        config: TextFormat,
+        text_fmt: TextFormat,
         annotations: &'t TextAnnotations<'t>,
         char_idx: usize,
     ) -> (Self, usize) {
@@ -156,7 +156,7 @@ impl<'t> DocumentFormatter<'t> {
         annotations.reset_pos(block_char_idx);
         (
             DocumentFormatter {
-                config,
+                text_fmt,
                 annotations,
                 visual_pos: Position { row: 0, col: 0 },
                 graphemes: RopeGraphemes::new(text.slice(block_char_idx..)),
@@ -223,10 +223,40 @@ impl<'t> DocumentFormatter<'t> {
             };
 
         let grapheme =
-            FormattedGrapheme::new(grapheme, style, col, self.config.tab_width, doc_chars);
+            FormattedGrapheme::new(grapheme, style, col, self.text_fmt.tab_width, doc_chars);
 
         self.char_pos += doc_chars as usize;
         Some(grapheme)
+    }
+
+    /// Move a word to the next visual line
+    fn wrap_word(&mut self, virtual_lines_before_word: usize) -> usize {
+        // softwrap this word to the next line
+        let indent_carry_over = if let Some(indent) = self.indent_level {
+            if indent as u16 <= self.text_fmt.max_indent_retain {
+                indent as u16
+            } else {
+                0
+            }
+        } else {
+            // ensure the indent stays 0
+            self.indent_level = Some(0);
+            0
+        };
+
+        let line_indent = indent_carry_over + self.text_fmt.wrap_indent;
+        self.visual_pos.col = line_indent as usize;
+        self.virtual_lines -= virtual_lines_before_word;
+        self.visual_pos.row += 1 + virtual_lines_before_word;
+        let mut word_width = 0;
+        for grapheme in &mut self.word_buf {
+            let visual_x = line_indent + word_width;
+            grapheme
+                .grapheme
+                .change_position(visual_x as usize, self.text_fmt.tab_width);
+            word_width += grapheme.width();
+        }
+        word_width as usize
     }
 
     fn advance_to_next_word(&mut self) {
@@ -234,16 +264,17 @@ impl<'t> DocumentFormatter<'t> {
         let mut word_width = 0;
         let virtual_lines_before_word = self.virtual_lines;
         let mut virtual_lines_before_grapheme = self.virtual_lines;
+
         loop {
             // softwrap word if necessary
-            if word_width + self.visual_pos.col >= self.config.viewport_width as usize {
+            if word_width + self.visual_pos.col >= self.text_fmt.viewport_width as usize {
                 // wrapping this word would move too much text to the next line
                 // split the word at the line end instead
-                if word_width > self.config.max_wrap as usize {
+                if word_width > self.text_fmt.max_wrap as usize {
                     // Usually we stop accomulating graphemes as soon as softwrapping becomes necessary.
                     // However if the last grapheme is multiple columns wide it might extend beyond the EOL.
                     // The condition below ensures that this grapheme is not cutoff and instead wrapped to the next line
-                    if word_width + self.visual_pos.col > self.config.viewport_width as usize {
+                    if word_width + self.visual_pos.col > self.text_fmt.viewport_width as usize {
                         self.peeked_grapheme = self.word_buf.pop().map(|grapheme| {
                             (grapheme, self.virtual_lines - virtual_lines_before_grapheme)
                         });
@@ -252,20 +283,7 @@ impl<'t> DocumentFormatter<'t> {
                     return;
                 }
 
-                // softwrap this word to the next line
-                let indent_carry_over = if let Some(indent) = self.indent_level {
-                    if indent as u16 <= self.config.max_indent_retain {
-                        indent as u16
-                    } else {
-                        0
-                    }
-                } else {
-                    0
-                };
-                let line_indent = indent_carry_over + self.config.wrap_indent;
-                self.visual_pos.col = line_indent as usize;
-                self.virtual_lines -= virtual_lines_before_word;
-                self.visual_pos.row += 1 + virtual_lines_before_word;
+                word_width = self.wrap_word(virtual_lines_before_word);
             }
 
             virtual_lines_before_grapheme = self.virtual_lines;
@@ -279,24 +297,20 @@ impl<'t> DocumentFormatter<'t> {
                 return;
             };
 
-            word_width += grapheme.width() as usize;
-
-            match grapheme.grapheme {
-                Grapheme::Newline => {
-                    self.indent_level = None;
-                    self.word_buf.push(grapheme);
-                    return;
-                }
-                Grapheme::Space | Grapheme::Tab { .. } => {
-                    self.word_buf.push(grapheme);
-                    return;
-                }
-                Grapheme::Other { .. } if self.indent_level.is_none() => {
-                    self.indent_level = Some(self.visual_pos.col);
-                }
-                _ => (),
+            // Track indentation
+            if !grapheme.is_whitespace() && self.indent_level.is_none() {
+                self.indent_level = Some(self.visual_pos.col);
+            } else if grapheme.grapheme == Grapheme::Newline {
+                self.indent_level = None;
             }
+
+            let is_word_boundary = grapheme.is_word_boundary();
+            word_width += grapheme.width() as usize;
             self.word_buf.push(grapheme);
+
+            if is_word_boundary {
+                return;
+            }
         }
     }
 
@@ -310,7 +324,7 @@ impl<'t> Iterator for DocumentFormatter<'t> {
     type Item = (FormattedGrapheme<'t>, Position);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let grapheme = if self.config.soft_wrap {
+        let grapheme = if self.text_fmt.soft_wrap {
             if self.word_i >= self.word_buf.len() {
                 self.advance_to_next_word();
                 self.word_i = 0;
@@ -326,7 +340,6 @@ impl<'t> Iterator for DocumentFormatter<'t> {
         };
 
         let pos = self.visual_pos;
-        // println!("{pos:?} {}", grapheme.grapheme);
         if grapheme.grapheme == Grapheme::Newline {
             self.visual_pos.row += 1;
             self.visual_pos.row += take(&mut self.virtual_lines);

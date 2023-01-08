@@ -36,7 +36,7 @@ impl<'t> DocumentFormatter<'t> {
     fn collect_to_str(&mut self) -> String {
         use std::fmt::Write;
         let mut res = String::new();
-        let viewport_width = self.config.viewport_width;
+        let viewport_width = self.text_fmt.viewport_width;
         let mut line = 0;
 
         for (grapheme, pos) in self {
