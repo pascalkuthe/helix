@@ -271,7 +271,7 @@ pub fn char_idx_at_visual_offset<'a>(
     text_fmt: TextFormat,
     annotations: &TextAnnotations,
 ) -> (usize, usize) {
-    // convert row offset relative to anchor row to row relative to a starting block
+    // convert row relative to visual line containing anchor to row relative to a block containing anchor (anchor may change)
     loop {
         let (visual_pos_in_block, block_char_offset) =
             visual_offset_from_block(text, anchor, anchor, text_fmt, annotations);
@@ -292,8 +292,29 @@ pub fn char_idx_at_visual_offset<'a>(
         row_offset += 1;
     }
 
-    let row = row_offset as usize;
+    char_idx_at_visual_block_offset(
+        text,
+        anchor,
+        row_offset as usize,
+        column,
+        text_fmt,
+        annotations,
+    )
+}
 
+/// This function behaves the same as `char_idx_at_visual_offset`, except that
+/// the vertical offset `row` is always computed relative to the block that contains `anchor`
+/// instead of the visual line that contains `anchor`.
+/// Usually `char_idx_at_visual_offset` is more useful but this function can be
+/// used in some situations as an optimization when `visual_offset_from_block` was used
+pub fn char_idx_at_visual_block_offset(
+    text: RopeSlice,
+    anchor: usize,
+    row: usize,
+    column: usize,
+    text_fmt: TextFormat,
+    annotations: &TextAnnotations,
+) -> (usize, usize) {
     let (formatter, mut char_idx) =
         DocumentFormatter::new_at_prev_block(text, text_fmt, annotations, anchor);
     let mut last_char_idx = char_idx;

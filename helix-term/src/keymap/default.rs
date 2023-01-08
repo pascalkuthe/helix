@@ -7,8 +7,8 @@ use helix_core::hashmap;
 pub fn default() -> HashMap<Mode, Keymap> {
     let normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
-        "j" | "down" => move_line_down,
-        "k" | "up" => move_line_up,
+        "j" | "down" => move_visual_line_down,
+        "k" | "up" => move_visual_line_up,
         "l" | "right" => move_char_right,
 
         "t" => find_till_char,
@@ -361,8 +361,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-j" | "ret" => insert_newline,
         "tab" => insert_tab,
 
-        "up" => move_line_up,
-        "down" => move_line_down,
+        "up" => move_visual_line_up,
+        "down" => move_visual_line_down,
         "left" => move_char_left,
         "right" => move_char_right,
         "pageup" => page_up,

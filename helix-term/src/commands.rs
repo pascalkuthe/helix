@@ -17,7 +17,7 @@ use helix_core::{
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
-    movement::{self, Direction},
+    movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords, pos_at_visual_coords,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
@@ -205,6 +205,8 @@ impl MappableCommand {
         move_char_right, "Move right",
         move_line_up, "Move up",
         move_line_down, "Move down",
+        move_visual_line_up, "Move up",
+        move_visual_line_down, "Move down",
         extend_char_left, "Extend left",
         extend_char_right, "Extend right",
         extend_line_up, "Extend up",
@@ -548,13 +550,20 @@ fn move_impl(
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
-    let config = doc.text_format(view.inner_area(doc).width);
+    let text_fmt = doc.text_format(view.inner_area(doc).width);
     let mut annotations = view.text_annotations(doc);
 
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| move_fn(text, range, dir, count, behaviour, config, &mut annotations));
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        move_fn(
+            text,
+            range,
+            dir,
+            count,
+            behaviour,
+            text_fmt,
+            &mut annotations,
+        )
+    });
     doc.set_selection(view.id, selection);
 }
 
@@ -574,6 +583,24 @@ fn move_line_up(cx: &mut Context) {
 
 fn move_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Move)
+}
+
+fn move_visual_line_up(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_visual,
+        Direction::Backward,
+        Movement::Move,
+    )
+}
+
+fn move_visual_line_down(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_visual,
+        Direction::Forward,
+        Movement::Move,
+    )
 }
 
 fn extend_char_left(cx: &mut Context) {

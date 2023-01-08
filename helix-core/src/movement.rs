@@ -12,10 +12,11 @@ use crate::{
         prev_grapheme_boundary,
     },
     line_ending::rope_is_line_ending,
+    position::char_idx_at_visual_block_offset,
     syntax::LanguageConfiguration,
     text_annotations::TextAnnotations,
     textobject::TextObject,
-    visual_offset_from_block, Position, Range, RopeSlice,
+    visual_offset_from_block, Range, RopeSlice,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -51,37 +52,112 @@ pub fn move_horizontally(
     range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
 }
 
-pub fn move_vertically(
+pub fn move_vertically_visual(
     slice: RopeSlice,
     range: Range,
     dir: Direction,
     count: usize,
     behaviour: Movement,
-    config: TextFormat,
+    text_fmt: TextFormat,
     annotations: &mut TextAnnotations,
 ) -> Range {
     annotations.clear_line_annotations();
     let pos = range.cursor(slice);
 
     // Compute the current position's 2d coordinates.
-    let Position { col, .. } = visual_offset_from_block(slice, pos, pos, config, annotations).0;
-    let horiz = range.horiz.unwrap_or(col as u32);
+    let (visual_pos, block_off) = visual_offset_from_block(slice, pos, pos, text_fmt, annotations);
+    let new_col = range
+        .old_visual_position
+        .map_or(visual_pos.col as u32, |(_, col)| col);
 
     // Compute the new position.
-    let new_col = col.max(horiz as usize);
-    let row_off = match dir {
+    let mut row_off = match dir {
         Direction::Forward => count as isize,
         Direction::Backward => -(count as isize),
     };
-    // TODO how to handle inline annotations that span an entire visual line
-    let new_pos = char_idx_at_visual_offset(slice, pos, row_off, new_col, config, annotations).0;
+
+    // TODO how to handle inline annotations that span an entire visual line (very unlikely)
+    // compute visual offset relative to block start to avoid transversing the block twice
+    row_off += visual_pos.row as isize;
+    let new_pos = char_idx_at_visual_offset(
+        slice,
+        block_off,
+        row_off,
+        new_col as usize,
+        text_fmt,
+        annotations,
+    )
+    .0;
+
     // Special-case to avoid moving to the end of the last non-empty line.
     if behaviour == Movement::Extend && slice.line(slice.char_to_line(new_pos)).len_chars() == 0 {
         return range;
     }
 
     let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
-    new_range.horiz = Some(horiz);
+    new_range.old_visual_position = Some((0, new_col));
+    new_range
+}
+
+pub fn move_vertically(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    text_fmt: TextFormat,
+    annotations: &mut TextAnnotations,
+) -> Range {
+    annotations.clear_line_annotations();
+    let pos = range.cursor(slice);
+    let line_idx = slice.char_to_line(pos);
+    let line_start = slice.line_to_char(line_idx);
+
+    // Compute the current position's 2d coordinates.
+    let visual_pos = visual_offset_from_block(slice, line_start, pos, text_fmt, annotations).0;
+    let (mut new_row, new_col) = range
+        .old_visual_position
+        .map_or((visual_pos.row as u32, visual_pos.col as u32), |pos| pos);
+    new_row = new_row.max(visual_pos.row as u32);
+    let line_idx = slice.char_to_line(pos);
+
+    // Compute the new position.
+    let mut new_line_idx = match dir {
+        Direction::Forward => line_idx.saturating_add(count),
+        Direction::Backward => line_idx.saturating_sub(count),
+    };
+
+    let slice = if new_line_idx >= slice.len_lines() - 1 {
+        // there is no line terminator for the last line
+        // so the logic below is not necessary here
+        new_line_idx = slice.len_lines() - 1;
+        slice
+    } else {
+        // char_idx_at_visual_block_offset returns a one-past-the-end index
+        // in case it reaches the end of the slice
+        // to avoid moving to the nextline in that case the line terminator is removed from the line
+        let new_line_end = prev_grapheme_boundary(slice, slice.line_to_char(new_line_idx + 1));
+        slice.slice(..new_line_end)
+    };
+
+    let new_line_start = slice.line_to_char(new_line_idx);
+
+    let (new_pos, _) = char_idx_at_visual_block_offset(
+        slice,
+        new_line_start,
+        new_row as usize,
+        new_col as usize,
+        text_fmt,
+        annotations,
+    );
+
+    // Special-case to avoid moving to the end of the last non-empty line.
+    if behaviour == Movement::Extend && slice.line(new_line_idx).len_chars() == 0 {
+        return range;
+    }
+
+    let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
+    new_range.old_visual_position = Some((new_row as u32, new_col));
     new_range
 }
 
@@ -478,14 +554,14 @@ mod test {
         assert_eq!(
             coords_at_pos(
                 slice,
-                move_vertically(
+                move_vertically_visual(
                     slice,
                     range,
                     Direction::Forward,
                     1,
                     Movement::Move,
                     TextFormat::default(),
-                    &mut TextAnnotations::default()
+                    &mut TextAnnotations::default(),
                 )
                 .head
             ),
@@ -607,7 +683,7 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_vertically(
+            range = move_vertically_visual(
                 slice,
                 range,
                 direction,
@@ -658,7 +734,7 @@ mod test {
                     TextFormat::default(),
                     &mut TextAnnotations::default(),
                 ),
-                Axis::V => move_vertically(
+                Axis::V => move_vertically_visual(
                     slice,
                     range,
                     direction,
@@ -709,7 +785,7 @@ mod test {
                     TextFormat::default(),
                     &mut TextAnnotations::default(),
                 ),
-                Axis::V => move_vertically(
+                Axis::V => move_vertically_visual(
                     slice,
                     range,
                     direction,
