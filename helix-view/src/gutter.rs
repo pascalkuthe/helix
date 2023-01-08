@@ -150,7 +150,7 @@ pub fn line_numbers<'doc>(
     is_focused: bool,
 ) -> GutterFn<'doc> {
     let text = doc.text().slice(..);
-    let last_line = view.last_document_line(doc);
+    let last_line = view.estimate_last_doc_line(doc);
     let width = GutterType::LineNumbers.width(view, doc);
 
     // Whether to draw the line number for the last line of the

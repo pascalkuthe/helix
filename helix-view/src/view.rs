@@ -321,27 +321,19 @@ impl View {
         self.offset_coords_to_in_view(doc, scrolloff).is_none()
     }
 
-    /// Calculates the last visible document line on screen
+    /// Estiamtes the last visible document line on screen.
+    /// This estimate is an upper bond obtained by calculating the first
+    /// visible line and adding the viewport height.
+    /// The actual last visisble line may be smaller if softwrapping occurs
+    /// or virtual text lines are visible
     #[inline]
-    pub fn last_document_line(&self, doc: &Document) -> usize {
+    pub fn estimate_last_doc_line(&self, doc: &Document) -> usize {
         let doc_text = doc.text().slice(..);
-        let viewport = self.inner_area(doc);
-        let text_fmt = doc.text_format(viewport.width);
-        let annotations = self.text_annotations(doc);
-
-        let last_visual_line =
-            (self.offset.vertical_offset + viewport.height as usize).saturating_sub(1);
-
-        // translate to document line
-        let (char_idx, _) = char_idx_at_visual_offset(
-            doc_text,
-            self.offset.anchor,
-            last_visual_line as isize,
-            0,
-            text_fmt,
-            &annotations,
-        );
-        doc_text.char_to_line(char_idx)
+        let line = doc_text.char_to_line(self.offset.anchor);
+        // Saturating subs to make it inclusive zero indexing.
+        (line + self.inner_height())
+            .min(doc_text.len_lines())
+            .saturating_sub(1)
     }
 
     /// Calculates the last non-empty visual line on screen
