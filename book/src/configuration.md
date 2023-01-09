@@ -256,3 +256,24 @@ render = true
 character = "╎" # Some characters that work well: "▏", "┆", "┊", "⸽"
 skip-levels = 1
 ```
+
+### `[editor.soft-wrap]` Section
+
+Options for soft wrapping lines that exceed the view width
+
+| Key                 | Description                                             | Default |
+| ---                 | ---                                                     | ---     |
+| `enable`            | Whether to soft wrapping is enabled.                    | `false` |
+| `max-wrap`          | Maximum free space at the end of the line.              | `5`     |
+| `max-indent-retain` | Maximum indentation to carry over when softwrapping     | `80`    |
+| `wrap-ident`        | Indentation inserted before softwrapped lines           | `2`     |
+
+Example:
+
+```toml
+[editor.soft-wrap]
+enable = true
+max-wrap = 8 # increase value to reduce forced mid-word wrapping
+max-indent-retain = 0 
+wrap-indent = 0 
+```

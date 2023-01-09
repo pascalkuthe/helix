@@ -188,7 +188,7 @@ pub struct Config {
 pub struct SoftWrap {
     /// Soft wrap lines that exceed viewport width. Default to off
     pub enable: bool,
-    /// Maximum space that softwrapping may leave free at the end of the line when performing softwrapping
+    /// Maximum space left free at the end of the line.
     /// This space is used to wrap text at word boundries. If that is not possible within this limit
     /// the word is simply split at the end of the line.
     ///
