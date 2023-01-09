@@ -261,12 +261,12 @@ skip-levels = 1
 
 Options for soft wrapping lines that exceed the view width
 
-| Key                 | Description                                             | Default |
-| ---                 | ---                                                     | ---     |
-| `enable`            | Whether to soft wrapping is enabled.                    | `false` |
-| `max-wrap`          | Maximum free space at the end of the line.              | `5`     |
-| `max-indent-retain` | Maximum indentation to carry over when softwrapping     | `80`    |
-| `wrap-ident`        | Indentation inserted before softwrapped lines           | `2`     |
+| Key                 | Description                                                  | Default |
+| ---                 | ---                                                          | ---     |
+| `enable`            | Whether soft wrapping is enabled.                            | `false` |
+| `max-wrap`          | Maximum free space left at the end of the line.              | `5`     |
+| `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line. | `80`    |
+| `wrap-ident`        | Extra indentation inserted before every soft wrapped lines.  | `2`     |
 
 Example:
 
