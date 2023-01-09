@@ -320,8 +320,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
         "h" | "left" => extend_char_left,
-        "j" | "down" => extend_line_down,
-        "k" | "up" => extend_line_up,
+        "j" | "down" => extend_visual_line_down,
+        "k" | "up" => extend_visual_line_up,
         "l" | "right" => extend_char_right,
 
         "w" => extend_next_word_start,

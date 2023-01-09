@@ -211,6 +211,8 @@ impl MappableCommand {
         extend_char_right, "Extend right",
         extend_line_up, "Extend up",
         extend_line_down, "Extend down",
+        extend_visual_line_up, "Extend up",
+        extend_visual_line_down, "Extend down",
         copy_selection_on_next_line, "Copy selection on next line",
         copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to start of next word",
@@ -617,6 +619,24 @@ fn extend_line_up(cx: &mut Context) {
 
 fn extend_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Extend)
+}
+
+fn extend_visual_line_up(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_visual,
+        Direction::Backward,
+        Movement::Extend,
+    )
+}
+
+fn extend_visual_line_down(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_visual,
+        Direction::Forward,
+        Movement::Extend,
+    )
 }
 
 fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
