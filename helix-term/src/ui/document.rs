@@ -235,7 +235,20 @@ pub fn render_text<'t>(
                 // text will never reach usize::MAX as rust memory allocations are limited
                 // to isize::MAX
                 *char_idx = usize::MAX;
-                callback(renderer, pos)
+
+                if text_fmt.soft_wrap {
+                    callback(renderer, pos)
+                } else if pos.col >= renderer.col_offset
+                    && pos.col - renderer.col_offset < renderer.viewport.width as usize
+                {
+                    callback(
+                        renderer,
+                        Position {
+                            row: pos.row,
+                            col: pos.col - renderer.col_offset,
+                        },
+                    )
+                }
             }
         }
 
