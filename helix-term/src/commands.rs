@@ -543,7 +543,7 @@ fn move_impl(
         Direction,
         usize,
         Movement,
-        TextFormat,
+        &TextFormat,
         &mut TextAnnotations,
     ) -> Range,
     dir: Direction,
@@ -552,8 +552,8 @@ fn move_impl(
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
-    let text_fmt = doc.text_format(view.inner_area(doc).width);
-    let mut annotations = view.text_annotations(doc);
+    let text_fmt = doc.text_format(view.inner_area(doc).width, None);
+    let mut annotations = view.text_annotations(doc, None);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         move_fn(
@@ -562,7 +562,7 @@ fn move_impl(
             dir,
             count,
             behaviour,
-            text_fmt,
+            &text_fmt,
             &mut annotations,
         )
     });
@@ -1453,14 +1453,14 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 
     let doc_text = doc.text().slice(..);
     let viewport = view.inner_area(doc);
-    let text_fmt = doc.text_format(viewport.width);
-    let annotations = view.text_annotations(doc);
+    let text_fmt = doc.text_format(viewport.width, None);
+    let annotations = view.text_annotations(doc, None);
     (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
         doc_text,
         view.offset.anchor,
         view.offset.vertical_offset as isize + offset,
         0,
-        text_fmt,
+        &text_fmt,
         &annotations,
     );
 
@@ -1472,7 +1472,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
                 view.offset.anchor,
                 (view.offset.vertical_offset + scrolloff) as isize,
                 0,
-                text_fmt,
+                &text_fmt,
                 &annotations,
             )
             .0;
@@ -1486,7 +1486,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
                 view.offset.anchor,
                 (view.offset.vertical_offset + height - scrolloff) as isize,
                 0,
-                text_fmt,
+                &text_fmt,
                 &annotations,
             )
             .0;
@@ -4548,15 +4548,16 @@ fn align_view_bottom(cx: &mut Context) {
 fn align_view_middle(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let inner_width = view.inner_width(doc);
-    let text_fmt = doc.text_format(inner_width);
+    let text_fmt = doc.text_format(inner_width, None);
     // there is no horizontal position when softwrap is enabled
     if text_fmt.soft_wrap {
         return;
     }
     let doc_text = doc.text().slice(..);
-    let annotations = view.text_annotations(doc);
+    let annotations = view.text_annotations(doc, None);
     let pos = doc.selection(view.id).primary().cursor(doc_text);
-    let pos = visual_offset_from_block(doc_text, view.offset.anchor, pos, text_fmt, &annotations).0;
+    let pos =
+        visual_offset_from_block(doc_text, view.offset.anchor, pos, &text_fmt, &annotations).0;
 
     view.offset.horizontal_offset = pos
         .col

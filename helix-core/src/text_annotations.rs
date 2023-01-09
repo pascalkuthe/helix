@@ -7,7 +7,6 @@ use crate::syntax::Highlight;
 
 #[derive(Debug)]
 pub struct InlineAnnotation {
-    pub highlight: Highlight,
     pub text: Box<str>,
     pub char_idx: usize,
 }
@@ -16,7 +15,6 @@ pub struct InlineAnnotation {
 pub struct Overlay<'t> {
     pub char_idx: usize,
     pub grapheme: GraphemeStr<'t>,
-    pub highlight: Option<Highlight>,
 }
 
 #[derive(Debug)]
@@ -26,21 +24,23 @@ pub struct LineAnnotation {
 }
 
 #[derive(Debug)]
-struct Layer<'a, T> {
-    annotations: &'a [T],
+struct Layer<'a, A, M> {
+    annotations: &'a [A],
     current_index: Cell<usize>,
+    metadata: M,
 }
 
-impl<'a, T> Clone for Layer<'a, T> {
+impl<'a, T, M: Clone> Clone for Layer<'a, T, M> {
     fn clone(&self) -> Self {
         Layer {
             annotations: self.annotations,
             current_index: self.current_index.clone(),
+            metadata: self.metadata.clone(),
         }
     }
 }
 
-impl<'a, T> Layer<'a, T> {
+impl<'a, T, M> Layer<'a, T, M> {
     pub fn reset_pos(&self, char_idx: usize, get_char_idx: impl Fn(&T) -> usize) {
         let new_index = self
             .annotations
@@ -62,16 +62,17 @@ impl<'a, T> Layer<'a, T> {
     }
 }
 
-impl<'a, T> From<&'a [T]> for Layer<'a, T> {
-    fn from(annotations: &'a [T]) -> Layer<'a, T> {
+impl<'a, T, M> From<(&'a [T], M)> for Layer<'a, T, M> {
+    fn from((annotations, metadata): (&'a [T], M)) -> Layer<'a, T, M> {
         Layer {
             annotations,
             current_index: Cell::new(0),
+            metadata,
         }
     }
 }
 
-fn reset_pos<T>(layers: &[Layer<T>], pos: usize, get_pos: impl Fn(&T) -> usize) {
+fn reset_pos<T, M>(layers: &[Layer<T, M>], pos: usize, get_pos: impl Fn(&T) -> usize) {
     for layer in layers {
         layer.reset_pos(pos, &get_pos)
     }
@@ -81,9 +82,9 @@ fn reset_pos<T>(layers: &[Layer<T>], pos: usize, get_pos: impl Fn(&T) -> usize) 
 /// Also commonly called virtual text.
 #[derive(Default, Debug, Clone)]
 pub struct TextAnnotations<'t> {
-    inline_annotations: Vec<Layer<'t, InlineAnnotation>>,
-    overlays: Vec<Layer<'t, Overlay<'t>>>,
-    line_annotations: Vec<Layer<'t, LineAnnotation>>,
+    inline_annotations: Vec<Layer<'t, InlineAnnotation, Option<Highlight>>>,
+    overlays: Vec<Layer<'t, Overlay<'t>, Option<Highlight>>>,
+    line_annotations: Vec<Layer<'t, LineAnnotation, ()>>,
 }
 
 impl<'t> TextAnnotations<'t> {
@@ -101,11 +102,7 @@ impl<'t> TextAnnotations<'t> {
     ) -> Vec<(usize, Range<usize>)> {
         let mut highlights = Vec::new();
         for char_idx in char_range {
-            if let Some(Overlay {
-                highlight: Some(highlight),
-                ..
-            }) = self.overlay_at(char_idx)
-            {
+            if let Some((_, Some(highlight))) = self.overlay_at(char_idx) {
                 // we don't know the number of chars the original grapheme takes
                 // however it doesn't matter as highlight bounderies are automatically
                 // aligned to grapheme boundaries in the rendering code
@@ -116,18 +113,26 @@ impl<'t> TextAnnotations<'t> {
         highlights
     }
 
-    pub fn add_inline_annotations(&mut self, layer: &'t [InlineAnnotation]) -> &mut Self {
-        self.inline_annotations.push(layer.into());
+    pub fn add_inline_annotations(
+        &mut self,
+        layer: &'t [InlineAnnotation],
+        highlight: Option<Highlight>,
+    ) -> &mut Self {
+        self.inline_annotations.push((layer, highlight).into());
         self
     }
 
-    pub fn add_overlay(&mut self, layer: &'t [Overlay<'t>]) -> &mut Self {
-        self.overlays.push(layer.into());
+    pub fn add_overlay(
+        &mut self,
+        layer: &'t [Overlay<'t>],
+        highlight: Option<Highlight>,
+    ) -> &mut Self {
+        self.overlays.push((layer, highlight).into());
         self
     }
 
     pub fn add_line_annotation(&mut self, layer: &'t [LineAnnotation]) -> &mut Self {
-        self.line_annotations.push(layer.into());
+        self.line_annotations.push((layer, ()).into());
         self
     }
 
@@ -138,17 +143,21 @@ impl<'t> TextAnnotations<'t> {
     pub(crate) fn next_inline_annotation_at(
         &self,
         char_idx: usize,
-    ) -> Option<&'t InlineAnnotation> {
-        self.inline_annotations
-            .iter()
-            .find_map(|layer| layer.consume(char_idx, |annot| annot.char_idx))
+    ) -> Option<(&'t InlineAnnotation, Option<Highlight>)> {
+        self.inline_annotations.iter().find_map(|layer| {
+            let annotation = layer.consume(char_idx, |annot| annot.char_idx)?;
+            Some((annotation, layer.metadata))
+        })
     }
 
-    pub(crate) fn overlay_at(&self, char_idx: usize) -> Option<&'t Overlay<'t>> {
+    pub(crate) fn overlay_at(
+        &self,
+        char_idx: usize,
+    ) -> Option<(&'t Overlay<'t>, Option<Highlight>)> {
         let mut overlay = None;
         for layer in &self.overlays {
             if let Some(new_overlay) = layer.consume(char_idx, |annot| annot.char_idx) {
-                overlay = Some(new_overlay)
+                overlay = Some((new_overlay, layer.metadata))
             }
         }
         overlay

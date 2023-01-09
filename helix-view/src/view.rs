@@ -1,4 +1,6 @@
-use crate::{align_view, editor::GutterType, graphics::Rect, Align, Document, DocumentId, ViewId};
+use crate::{
+    align_view, editor::GutterType, graphics::Rect, Align, Document, DocumentId, Theme, ViewId,
+};
 use helix_core::{
     char_idx_at_visual_offset, doc_formatter::TextFormat, text_annotations::TextAnnotations,
     visual_offset_from_anchor, visual_offset_from_block, Position, RopeSlice, Selection,
@@ -198,8 +200,8 @@ impl View {
         let doc_text = doc.text().slice(..);
         let viewport = self.inner_area(doc);
         let vertical_viewport_end = self.offset.vertical_offset + viewport.height as usize;
-        let text_fmt = doc.text_format(viewport.width);
-        let annotations = self.text_annotations(doc);
+        let text_fmt = doc.text_format(viewport.width, None);
+        let annotations = self.text_annotations(doc, None);
 
         // - 1 so we have at least one gap in the middle.
         // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
@@ -214,7 +216,7 @@ impl View {
                 doc_text,
                 offset.anchor,
                 cursor,
-                text_fmt,
+                &text_fmt,
                 &annotations,
                 vertical_viewport_end,
             );
@@ -253,7 +255,7 @@ impl View {
                     cursor,
                     -(scrolloff as isize),
                     0,
-                    text_fmt,
+                    &text_fmt,
                     &annotations,
                 );
             } else {
@@ -262,7 +264,7 @@ impl View {
                     cursor,
                     -(viewport.height as isize - scrolloff as isize),
                     0,
-                    text_fmt,
+                    &text_fmt,
                     &annotations,
                 );
             }
@@ -278,7 +280,7 @@ impl View {
                         doc_text,
                         offset.anchor,
                         cursor,
-                        text_fmt,
+                        &text_fmt,
                         &annotations,
                     )
                 })
@@ -341,8 +343,8 @@ impl View {
     pub fn last_visual_line(&self, doc: &Document) -> usize {
         let doc_text = doc.text().slice(..);
         let viewport = self.inner_area(doc);
-        let text_fmt = doc.text_format(viewport.width);
-        let annotations = self.text_annotations(doc);
+        let text_fmt = doc.text_format(viewport.width, None);
+        let annotations = self.text_annotations(doc, None);
 
         // last visual line in view is trivial to compute
         let visual_height = self.offset.vertical_offset + viewport.height as usize;
@@ -357,7 +359,7 @@ impl View {
             doc_text,
             self.offset.anchor,
             usize::MAX,
-            text_fmt,
+            &text_fmt,
             &annotations,
             visual_height,
         );
@@ -383,14 +385,14 @@ impl View {
         }
 
         let viewport = self.inner_area(doc);
-        let config = doc.text_format(viewport.width);
-        let annotations = self.text_annotations(doc);
+        let text_fmt = doc.text_format(viewport.width, None);
+        let annotations = self.text_annotations(doc, None);
 
         let mut pos = visual_offset_from_anchor(
             text,
             self.offset.anchor,
             pos,
-            config,
+            &text_fmt,
             &annotations,
             viewport.height as usize,
         )?
@@ -407,9 +409,13 @@ impl View {
         Some(pos)
     }
 
-    pub fn text_annotations<'d>(&self, doc: &'d Document) -> TextAnnotations<'d> {
+    pub fn text_annotations<'d>(
+        &self,
+        doc: &'d Document,
+        theme: Option<&Theme>,
+    ) -> TextAnnotations<'d> {
         // TODO custom annotations for custom views like side by side diffs
-        doc.text_annotations()
+        doc.text_annotations(theme)
     }
 
     pub fn text_pos_at_screen_coords(
@@ -460,7 +466,7 @@ impl View {
             self.offset.anchor,
             text_row as isize,
             text_col,
-            text_fmt,
+            &text_fmt,
             annotations,
         );
 
@@ -484,8 +490,8 @@ impl View {
             doc,
             row,
             column,
-            doc.text_format(self.inner_width(doc)),
-            &self.text_annotations(doc),
+            doc.text_format(self.inner_width(doc), None),
+            &self.text_annotations(doc, None),
             ignore_virtual_text,
         )
     }
@@ -501,8 +507,8 @@ impl View {
             doc,
             row,
             column,
-            doc.text_format(self.inner_width(doc)),
-            &self.text_annotations(doc),
+            doc.text_format(self.inner_width(doc), None),
+            &self.text_annotations(doc, None),
             ignore_virtual_text,
         )
     }

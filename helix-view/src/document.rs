@@ -4,6 +4,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
+use helix_core::syntax::Highlight;
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
@@ -30,7 +31,7 @@ use helix_core::{
 };
 
 use crate::editor::{Config, RedrawHandle};
-use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
+use crate::{apply_transaction, DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -1209,7 +1210,7 @@ impl Document {
         }
     }
 
-    pub fn text_format(&self, viewport_width: u16) -> TextFormat {
+    pub fn text_format(&self, viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
         let config = self.config.load();
         let soft_wrap = &config.soft_wrap;
         TextFormat {
@@ -1217,12 +1218,15 @@ impl Document {
             tab_width: self.tab_width() as u16,
             max_wrap: soft_wrap.max_wrap.min(viewport_width / 4),
             max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width / 4),
-            wrap_indent: soft_wrap.wrap_indent,
             viewport_width,
+            wrap_indicator: "↪ ".into(),
+            wrap_indicator_highlight: theme
+                .and_then(|theme| theme.find_scope_index("ui.virtual.whitespace"))
+                .map(Highlight),
         }
     }
 
-    pub fn text_annotations(&self) -> TextAnnotations {
+    pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
         TextAnnotations::default()
     }
 }

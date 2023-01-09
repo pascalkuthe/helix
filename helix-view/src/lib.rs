@@ -60,14 +60,14 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
         Align::Bottom => last_line_height,
     };
 
-    let text_fmt = doc.text_format(viewport.width);
-    let annotations = view.text_annotations(doc);
+    let text_fmt = doc.text_format(viewport.width, None);
+    let annotations = view.text_annotations(doc, None);
     (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
         doc_text,
         cursor,
         -(relative as isize),
         0,
-        text_fmt,
+        &text_fmt,
         &annotations,
     );
 }

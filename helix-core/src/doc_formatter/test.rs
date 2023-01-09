@@ -1,8 +1,6 @@
 use crate::doc_formatter::{DocumentFormatter, TextFormat};
-use crate::syntax::Highlight;
 use crate::text_annotations::{InlineAnnotation, Overlay, TextAnnotations};
 
-const WRAP_INDENT: u16 = 1;
 impl TextFormat {
     fn new_test(softwrap: bool) -> Self {
         TextFormat {
@@ -10,7 +8,8 @@ impl TextFormat {
             tab_width: 2,
             max_wrap: 3,
             max_indent_retain: 4,
-            wrap_indent: WRAP_INDENT,
+            wrap_indicator: ".".into(),
+            wrap_indicator_highlight: None,
             // use a prime number to allow linging up too often with repear
             viewport_width: 17,
         }
@@ -18,21 +17,6 @@ impl TextFormat {
 }
 
 impl<'t> DocumentFormatter<'t> {
-    fn new_test(
-        text: &'t str,
-        char_pos: usize,
-        softwrap: bool,
-        annotations: &'t TextAnnotations<'t>,
-    ) -> Self {
-        Self::new_at_prev_block(
-            text.into(),
-            TextFormat::new_test(softwrap),
-            annotations,
-            char_pos,
-        )
-        .0
-    }
-
     fn collect_to_str(&mut self) -> String {
         use std::fmt::Write;
         let mut res = String::new();
@@ -58,7 +42,14 @@ impl<'t> DocumentFormatter<'t> {
 }
 
 fn softwrap_text(text: &str, char_pos: usize) -> String {
-    DocumentFormatter::new_test(text, char_pos, true, &TextAnnotations::default()).collect_to_str()
+    DocumentFormatter::new_at_prev_block(
+        text.into(),
+        &TextFormat::new_test(true),
+        &TextAnnotations::default(),
+        char_pos,
+    )
+    .0
+    .collect_to_str()
 }
 
 #[test]
@@ -112,12 +103,13 @@ fn long_word_softwrap() {
 }
 
 fn overlay_text(text: &str, char_pos: usize, softwrap: bool, overlays: &[Overlay]) -> String {
-    DocumentFormatter::new_test(
-        text,
+    DocumentFormatter::new_at_prev_block(
+        text.into(),
+        &TextFormat::new_test(softwrap),
+        TextAnnotations::default().add_overlay(overlays, None),
         char_pos,
-        softwrap,
-        TextAnnotations::default().add_overlay(overlays),
     )
+    .0
     .collect_to_str()
 }
 
@@ -132,12 +124,10 @@ fn overlay() {
                 Overlay {
                     char_idx: 0,
                     grapheme: "X".into(),
-                    highlight: None
                 },
                 Overlay {
                     char_idx: 2,
                     grapheme: "\t".into(),
-                    highlight: None
                 },
             ]
         ),
@@ -152,17 +142,14 @@ fn overlay() {
                 Overlay {
                     char_idx: 2,
                     grapheme: "\t".into(),
-                    highlight: None
                 },
                 Overlay {
                     char_idx: 5,
                     grapheme: "\t".into(),
-                    highlight: None
                 },
                 Overlay {
                     char_idx: 16,
                     grapheme: "X".into(),
-                    highlight: None
                 },
             ]
         ),
@@ -176,12 +163,13 @@ fn annotate_text(
     softwrap: bool,
     annotations: &[InlineAnnotation],
 ) -> String {
-    DocumentFormatter::new_test(
-        text,
+    DocumentFormatter::new_at_prev_block(
+        text.into(),
+        &TextFormat::new_test(softwrap),
+        TextAnnotations::default().add_inline_annotations(annotations, None),
         char_pos,
-        softwrap,
-        TextAnnotations::default().add_inline_annotations(annotations),
     )
+    .0
     .collect_to_str()
 }
 
@@ -195,7 +183,6 @@ fn annotation() {
             &[InlineAnnotation {
                 char_idx: 0,
                 text: "foo".into(),
-                highlight: Highlight(0)
             }]
         ),
         "foobar "
@@ -208,7 +195,6 @@ fn annotation() {
             &[InlineAnnotation {
                 char_idx: 0,
                 text: "foo ".into(),
-                highlight: Highlight(0)
             }]
         ),
         "foo foo foo foo \n.foo foo foo foo \n.foo foo foo  "
@@ -217,22 +203,27 @@ fn annotation() {
 #[test]
 fn annotation_and_overlay() {
     assert_eq!(
-        DocumentFormatter::new_test(
-            "bbar",
-            0,
-            false,
+        DocumentFormatter::new_at_prev_block(
+            "bbar".into(),
+            &TextFormat::new_test(false),
             TextAnnotations::default()
-                .add_inline_annotations(&[InlineAnnotation {
-                    char_idx: 0,
-                    text: "fooo".into(),
-                    highlight: Highlight(0),
-                }])
-                .add_overlay(&[Overlay {
-                    char_idx: 0,
-                    grapheme: "\t".into(),
-                    highlight: None
-                }]),
+                .add_inline_annotations(
+                    &[InlineAnnotation {
+                        char_idx: 0,
+                        text: "fooo".into(),
+                    }],
+                    None
+                )
+                .add_overlay(
+                    &[Overlay {
+                        char_idx: 0,
+                        grapheme: "\t".into(),
+                    }],
+                    None
+                ),
+            0,
         )
+        .0
         .collect_to_str(),
         "fooo  bar "
     );

@@ -106,7 +106,7 @@ pub fn render_document(
         &mut renderer,
         doc.text().slice(..),
         offset,
-        doc.text_format(viewport.width),
+        &doc.text_format(viewport.width, Some(theme)),
         doc_annotations,
         highlight_iter,
         theme,
@@ -120,7 +120,7 @@ pub fn render_text<'t>(
     renderer: &mut TextRenderer,
     text: RopeSlice<'t>,
     offset: ViewPosition,
-    text_fmt: TextFormat,
+    text_fmt: &TextFormat,
     text_annotations: &TextAnnotations,
     highlight_iter: impl Iterator<Item = HighlightEvent>,
     theme: &Theme,
@@ -240,7 +240,12 @@ pub fn render_text<'t>(
         }
 
         let grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source {
-            theme.highlight(highlight.0)
+            let style = renderer.text_style;
+            if let Some(highlight) = highlight {
+                style.patch(theme.highlight(highlight.0))
+            } else {
+                style
+            }
         } else {
             style_span.0
         };

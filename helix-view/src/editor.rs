@@ -203,10 +203,10 @@ pub struct SoftWrap {
     ///
     /// Default to 40
     pub max_indent_retain: u16,
-    /// Extra spaces inserted before rendering softwrapped lines.
+    /// Indicator placed at the beginning of softwrapped lines
     ///
-    /// Default to 2
-    pub wrap_indent: u16,
+    /// Defaults to ↪
+    pub wrap_indicator: String,
 }
 
 impl Default for SoftWrap {
@@ -215,7 +215,7 @@ impl Default for SoftWrap {
             enable: false,
             max_wrap: 5,
             max_indent_retain: 80,
-            wrap_indent: 2,
+            wrap_indicator: "↪ ".into(),
         }
     }
 }

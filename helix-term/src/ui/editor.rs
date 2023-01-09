@@ -88,7 +88,7 @@ impl EditorView {
         let theme = &editor.theme;
         let config = editor.config();
 
-        let text_annotations = view.text_annotations(doc);
+        let text_annotations = view.text_annotations(doc, Some(theme));
         let mut line_decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
         let mut translated_positions: Vec<TranslatedPosition> = Vec::new();
 
@@ -762,13 +762,13 @@ impl EditorView {
 
         let selection = doc.selection(view.id);
         let primary = selection.primary();
-        let text_format = doc.text_format(viewport.width);
+        let text_format = doc.text_format(viewport.width, None);
         for range in selection.iter() {
             let is_primary = primary == *range;
             let cursor = range.cursor(text);
 
             let Position { col, .. } =
-                visual_offset_from_block(text, cursor, cursor, text_format, text_annotations).0;
+                visual_offset_from_block(text, cursor, cursor, &text_format, text_annotations).0;
 
             // if the cursor is horizontally in the view
             if col >= view.offset.horizontal_offset

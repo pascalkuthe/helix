@@ -37,7 +37,7 @@ pub fn move_horizontally(
     dir: Direction,
     count: usize,
     behaviour: Movement,
-    _: TextFormat,
+    _: &TextFormat,
     _: &mut TextAnnotations,
 ) -> Range {
     let pos = range.cursor(slice);
@@ -58,7 +58,7 @@ pub fn move_vertically_visual(
     dir: Direction,
     count: usize,
     behaviour: Movement,
-    text_fmt: TextFormat,
+    text_fmt: &TextFormat,
     annotations: &mut TextAnnotations,
 ) -> Range {
     annotations.clear_line_annotations();
@@ -105,7 +105,7 @@ pub fn move_vertically(
     dir: Direction,
     count: usize,
     behaviour: Movement,
-    text_fmt: TextFormat,
+    text_fmt: &TextFormat,
     annotations: &mut TextAnnotations,
 ) -> Range {
     annotations.clear_line_annotations();
@@ -560,7 +560,7 @@ mod test {
                     Direction::Forward,
                     1,
                     Movement::Move,
-                    TextFormat::default(),
+                    &TextFormat::default(),
                     &mut TextAnnotations::default(),
                 )
                 .head
@@ -593,7 +593,7 @@ mod test {
                 direction,
                 amount,
                 Movement::Move,
-                TextFormat::default(),
+                &TextFormat::default(),
                 &mut TextAnnotations::default(),
             );
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into())
@@ -627,7 +627,7 @@ mod test {
                 direction,
                 amount,
                 Movement::Move,
-                TextFormat::default(),
+                &TextFormat::default(),
                 &mut TextAnnotations::default(),
             );
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
@@ -657,7 +657,7 @@ mod test {
                 direction,
                 amount,
                 Movement::Extend,
-                TextFormat::default(),
+                &TextFormat::default(),
                 &mut TextAnnotations::default(),
             );
             assert_eq!(range.anchor, original_anchor);
@@ -689,7 +689,7 @@ mod test {
                 direction,
                 amount,
                 Movement::Move,
-                TextFormat::default(),
+                &TextFormat::default(),
                 &mut TextAnnotations::default(),
             );
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
@@ -731,7 +731,7 @@ mod test {
                     direction,
                     amount,
                     Movement::Move,
-                    TextFormat::default(),
+                    &TextFormat::default(),
                     &mut TextAnnotations::default(),
                 ),
                 Axis::V => move_vertically_visual(
@@ -740,7 +740,7 @@ mod test {
                     direction,
                     amount,
                     Movement::Move,
-                    TextFormat::default(),
+                    &TextFormat::default(),
                     &mut TextAnnotations::default(),
                 ),
             };
@@ -782,7 +782,7 @@ mod test {
                     direction,
                     amount,
                     Movement::Move,
-                    TextFormat::default(),
+                    &TextFormat::default(),
                     &mut TextAnnotations::default(),
                 ),
                 Axis::V => move_vertically_visual(
@@ -791,7 +791,7 @@ mod test {
                     direction,
                     amount,
                     Movement::Move,
-                    TextFormat::default(),
+                    &TextFormat::default(),
                     &mut TextAnnotations::default(),
                 ),
             };

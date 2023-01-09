@@ -33,7 +33,7 @@ pub enum GraphemeSource {
     /// because it's not part of the document. Instead the `Highlight`
     /// is emitted right by the document formatter
     VirtualText {
-        highlight: Highlight,
+        highlight: Option<Highlight>,
     },
 }
 
@@ -87,13 +87,14 @@ impl<'a> FormattedGrapheme<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct TextFormat {
     pub soft_wrap: bool,
     pub tab_width: u16,
     pub max_wrap: u16,
     pub max_indent_retain: u16,
-    pub wrap_indent: u16,
+    pub wrap_indicator: Box<str>,
+    pub wrap_indicator_highlight: Option<Highlight>,
     pub viewport_width: u16,
 }
 
@@ -105,15 +106,16 @@ impl Default for TextFormat {
             tab_width: 4,
             max_wrap: 3,
             max_indent_retain: 4,
-            wrap_indent: 1,
+            wrap_indicator: Box::from(" "),
             viewport_width: 17,
+            wrap_indicator_highlight: None,
         }
     }
 }
 
 #[derive(Debug)]
 pub struct DocumentFormatter<'t> {
-    text_fmt: TextFormat,
+    text_fmt: &'t TextFormat,
     annotations: &'t TextAnnotations<'t>,
 
     /// The visual position at the end of the last yielded word boundary
@@ -128,7 +130,7 @@ pub struct DocumentFormatter<'t> {
     /// Line breaks to be reserved for virtual text
     /// at the next line break
     virtual_lines: usize,
-    inline_anntoation_graphemes: Option<(Graphemes<'t>, Highlight)>,
+    inline_anntoation_graphemes: Option<(Graphemes<'t>, Option<Highlight>)>,
 
     // softwrap specific
     /// The indentation of the current line
@@ -152,7 +154,7 @@ impl<'t> DocumentFormatter<'t> {
     /// to avoid pathological behaviour.
     pub fn new_at_prev_block(
         text: RopeSlice<'t>,
-        text_fmt: TextFormat,
+        text_fmt: &'t TextFormat,
         annotations: &'t TextAnnotations<'t>,
         char_idx: usize,
     ) -> (Self, usize) {
@@ -180,7 +182,7 @@ impl<'t> DocumentFormatter<'t> {
         )
     }
 
-    fn next_inline_annotation_grapheme(&mut self) -> Option<(&'t str, Highlight)> {
+    fn next_inline_annotation_grapheme(&mut self) -> Option<(&'t str, Option<Highlight>)> {
         loop {
             if let Some(&mut (ref mut annotation, highlight)) =
                 self.inline_anntoation_graphemes.as_mut()
@@ -190,10 +192,12 @@ impl<'t> DocumentFormatter<'t> {
                 }
             }
 
-            if let Some(annotation) = self.annotations.next_inline_annotation_at(self.char_pos) {
+            if let Some((annotation, highlight)) =
+                self.annotations.next_inline_annotation_at(self.char_pos)
+            {
                 self.inline_anntoation_graphemes = Some((
                     UnicodeSegmentation::graphemes(&*annotation.text, true),
-                    annotation.highlight,
+                    highlight,
                 ))
             } else {
                 return None;
@@ -211,7 +215,7 @@ impl<'t> DocumentFormatter<'t> {
 
                 let overlay = self.annotations.overlay_at(self.char_pos);
                 let grapheme = match overlay {
-                    Some(overlay) => overlay.grapheme.clone(),
+                    Some((overlay, _)) => overlay.grapheme.clone(),
                     None => Cow::from(grapheme).into(),
                 };
 
@@ -250,13 +254,29 @@ impl<'t> DocumentFormatter<'t> {
             0
         };
 
-        let line_indent = (indent_carry_over + self.text_fmt.wrap_indent) as usize;
-        self.visual_pos.col = line_indent as usize;
+        self.visual_pos.col = indent_carry_over as usize;
         self.virtual_lines -= virtual_lines_before_word;
         self.visual_pos.row += 1 + virtual_lines_before_word;
+        let mut i = 0;
         let mut word_width = 0;
-        for grapheme in &mut self.word_buf {
-            let visual_x = line_indent + word_width;
+        let wrap_indicator = UnicodeSegmentation::graphemes(&*self.text_fmt.wrap_indicator, true)
+            .map(|g| {
+                i += 1;
+                let grapheme = FormattedGrapheme::new(
+                    g.into(),
+                    self.visual_pos.col + word_width,
+                    self.text_fmt.tab_width,
+                    GraphemeSource::VirtualText {
+                        highlight: self.text_fmt.wrap_indicator_highlight,
+                    },
+                );
+                word_width += grapheme.width();
+                grapheme
+            });
+        self.word_buf.splice(0..0, wrap_indicator);
+
+        for grapheme in &mut self.word_buf[i..] {
+            let visual_x = self.visual_pos.col + word_width;
             grapheme
                 .grapheme
                 .change_position(visual_x, self.text_fmt.tab_width);

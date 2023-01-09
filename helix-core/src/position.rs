@@ -105,7 +105,7 @@ pub fn visual_offset_from_block(
     text: RopeSlice,
     anchor: usize,
     pos: usize,
-    text_fmt: TextFormat,
+    text_fmt: &TextFormat,
     annotations: &TextAnnotations,
 ) -> (Position, usize) {
     let mut last_pos = Position::default();
@@ -131,7 +131,7 @@ pub fn visual_offset_from_anchor(
     text: RopeSlice,
     anchor: usize,
     pos: usize,
-    text_fmt: TextFormat,
+    text_fmt: &TextFormat,
     annotations: &TextAnnotations,
     max_rows: usize,
 ) -> Option<(Position, usize)> {
@@ -268,7 +268,7 @@ pub fn char_idx_at_visual_offset<'a>(
     mut anchor: usize,
     mut row_offset: isize,
     column: usize,
-    text_fmt: TextFormat,
+    text_fmt: &TextFormat,
     annotations: &TextAnnotations,
 ) -> (usize, usize) {
     // convert row relative to visual line containing anchor to row relative to a block containing anchor (anchor may change)
@@ -312,7 +312,7 @@ pub fn char_idx_at_visual_block_offset(
     anchor: usize,
     row: usize,
     column: usize,
-    text_fmt: TextFormat,
+    text_fmt: &TextFormat,
     annotations: &TextAnnotations,
 ) -> (usize, usize) {
     let (formatter, mut char_idx) =
@@ -456,25 +456,25 @@ mod test {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
         let slice = text.slice(..);
         let annot = TextAnnotations::default();
-        let config = TextFormat::default();
+        let text_fmt = TextFormat::default();
         assert_eq!(
-            visual_offset_from_block(slice, 0, 0, config, &annot).0,
+            visual_offset_from_block(slice, 0, 0, &text_fmt, &annot).0,
             (0, 0).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 5, config, &annot).0,
+            visual_offset_from_block(slice, 0, 5, &text_fmt, &annot).0,
             (0, 5).into()
         ); // position on \n
         assert_eq!(
-            visual_offset_from_block(slice, 0, 6, config, &annot).0,
+            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
             (1, 0).into()
         ); // position on w
         assert_eq!(
-            visual_offset_from_block(slice, 0, 7, config, &annot).0,
+            visual_offset_from_block(slice, 0, 7, &text_fmt, &annot).0,
             (1, 1).into()
         ); // position on o
         assert_eq!(
-            visual_offset_from_block(slice, 0, 10, config, &annot).0,
+            visual_offset_from_block(slice, 0, 10, &text_fmt, &annot).0,
             (1, 4).into()
         ); // position on d
 
@@ -482,31 +482,31 @@ mod test {
         let text = Rope::from("今日はいい\n");
         let slice = text.slice(..);
         assert_eq!(
-            visual_offset_from_block(slice, 0, 0, config, &annot).0,
+            visual_offset_from_block(slice, 0, 0, &text_fmt, &annot).0,
             (0, 0).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 1, config, &annot).0,
+            visual_offset_from_block(slice, 0, 1, &text_fmt, &annot).0,
             (0, 2).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 2, config, &annot).0,
+            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
             (0, 4).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 3, config, &annot).0,
+            visual_offset_from_block(slice, 0, 3, &text_fmt, &annot).0,
             (0, 6).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 4, config, &annot).0,
+            visual_offset_from_block(slice, 0, 4, &text_fmt, &annot).0,
             (0, 8).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 5, config, &annot).0,
+            visual_offset_from_block(slice, 0, 5, &text_fmt, &annot).0,
             (0, 10).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 6, config, &annot).0,
+            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
             (1, 0).into()
         );
 
@@ -514,23 +514,23 @@ mod test {
         let text = Rope::from("a̐éö̲\r\n");
         let slice = text.slice(..);
         assert_eq!(
-            visual_offset_from_block(slice, 0, 0, config, &annot).0,
+            visual_offset_from_block(slice, 0, 0, &text_fmt, &annot).0,
             (0, 0).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 2, config, &annot).0,
+            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
             (0, 1).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 4, config, &annot).0,
+            visual_offset_from_block(slice, 0, 4, &text_fmt, &annot).0,
             (0, 2).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 7, config, &annot).0,
+            visual_offset_from_block(slice, 0, 7, &text_fmt, &annot).0,
             (0, 3).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 9, config, &annot).0,
+            visual_offset_from_block(slice, 0, 9, &text_fmt, &annot).0,
             (1, 0).into()
         );
 
@@ -539,23 +539,23 @@ mod test {
         let text = Rope::from("किमपि\n");
         let slice = text.slice(..);
         assert_eq!(
-            visual_offset_from_block(slice, 0, 0, config, &annot).0,
+            visual_offset_from_block(slice, 0, 0, &text_fmt, &annot).0,
             (0, 0).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 2, config, &annot).0,
+            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
             (0, 2).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 3, config, &annot).0,
+            visual_offset_from_block(slice, 0, 3, &text_fmt, &annot).0,
             (0, 3).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 5, config, &annot).0,
+            visual_offset_from_block(slice, 0, 5, &text_fmt, &annot).0,
             (0, 5).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 6, config, &annot).0,
+            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
             (1, 0).into()
         );
 
@@ -563,15 +563,15 @@ mod test {
         let text = Rope::from("\tHello\n");
         let slice = text.slice(..);
         assert_eq!(
-            visual_offset_from_block(slice, 0, 0, config, &annot).0,
+            visual_offset_from_block(slice, 0, 0, &text_fmt, &annot).0,
             (0, 0).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 1, config, &annot).0,
+            visual_offset_from_block(slice, 0, 1, &text_fmt, &annot).0,
             (0, 4).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 2, config, &annot).0,
+            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
             (0, 5).into()
         );
     }
@@ -723,7 +723,7 @@ mod test {
                         slice.line_to_char(i as usize),
                         j,
                         3,
-                        text_fmt,
+                        &text_fmt,
                         &TextAnnotations::default(),
                     )
                     .0,
@@ -745,7 +745,7 @@ mod test {
                 last_char,
                 0,
                 0,
-                text_fmt,
+                &text_fmt,
                 &TextAnnotations::default(),
             )
             .0,
@@ -757,7 +757,7 @@ mod test {
                 last_char,
                 -1,
                 0,
-                text_fmt,
+                &text_fmt,
                 &TextAnnotations::default(),
             )
             .0,
@@ -769,7 +769,7 @@ mod test {
                 last_char,
                 -2,
                 0,
-                text_fmt,
+                &text_fmt,
                 &TextAnnotations::default(),
             )
             .0,
@@ -781,7 +781,7 @@ mod test {
                 softwrapped_text.len() + last_char,
                 -2,
                 0,
-                text_fmt,
+                &text_fmt,
                 &TextAnnotations::default(),
             )
             .0,
@@ -794,7 +794,7 @@ mod test {
                 softwrapped_text.len() + last_char,
                 -5,
                 0,
-                text_fmt,
+                &text_fmt,
                 &TextAnnotations::default(),
             )
             .0,

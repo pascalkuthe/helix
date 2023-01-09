@@ -266,7 +266,7 @@ Options for soft wrapping lines that exceed the view width
 | `enable`            | Whether soft wrapping is enabled.                            | `false` |
 | `max-wrap`          | Maximum free space left at the end of the line.              | `5`     |
 | `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line. | `80`    |
-| `wrap-ident`        | Extra indentation inserted before every soft wrapped lines.  | `2`     |
+| `wrap-indicator`    | Text inserted before soft wrapped lines.                     | `↪ `    |
 
 Example:
 
@@ -275,5 +275,5 @@ Example:
 enable = true
 max-wrap = 8 # increase value to reduce forced mid-word wrapping
 max-indent-retain = 0 
-wrap-indent = 0 
+wrap-indicator = " " 
 ```
