@@ -272,7 +272,6 @@ impl EditorView {
         text_annotations: &TextAnnotations,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
         let text = doc.text().slice(..);
-        text_annotations.reset_pos(anchor);
 
         let range = {
             let row = text.char_to_line(anchor);
@@ -283,6 +282,7 @@ impl EditorView {
 
             start..end
         };
+        text_annotations.reset_pos(range.start);
         text_annotations.collect_overlay_highlights(range)
     }
 

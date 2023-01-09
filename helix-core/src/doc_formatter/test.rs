@@ -131,12 +131,12 @@ fn overlay() {
             &[
                 Overlay {
                     char_idx: 0,
-                    grapheme: "X",
+                    grapheme: "X".into(),
                     highlight: None
                 },
                 Overlay {
                     char_idx: 2,
-                    grapheme: "\t",
+                    grapheme: "\t".into(),
                     highlight: None
                 },
             ]
@@ -151,17 +151,17 @@ fn overlay() {
             &[
                 Overlay {
                     char_idx: 2,
-                    grapheme: "\t",
+                    grapheme: "\t".into(),
                     highlight: None
                 },
                 Overlay {
                     char_idx: 5,
-                    grapheme: "\t",
+                    grapheme: "\t".into(),
                     highlight: None
                 },
                 Overlay {
                     char_idx: 16,
-                    grapheme: "X",
+                    grapheme: "X".into(),
                     highlight: None
                 },
             ]
@@ -194,7 +194,7 @@ fn annotation() {
             false,
             &[InlineAnnotation {
                 char_idx: 0,
-                text: "foo",
+                text: "foo".into(),
                 highlight: Highlight(0)
             }]
         ),
@@ -207,7 +207,7 @@ fn annotation() {
             true,
             &[InlineAnnotation {
                 char_idx: 0,
-                text: "foo ",
+                text: "foo ".into(),
                 highlight: Highlight(0)
             }]
         ),
@@ -224,12 +224,12 @@ fn annotation_and_overlay() {
             TextAnnotations::default()
                 .add_inline_annotations(&[InlineAnnotation {
                     char_idx: 0,
-                    text: "fooo",
+                    text: "fooo".into(),
                     highlight: Highlight(0),
                 }])
                 .add_overlay(&[Overlay {
                     char_idx: 0,
-                    grapheme: "\t",
+                    grapheme: "\t".into(),
                     highlight: None
                 }]),
         )

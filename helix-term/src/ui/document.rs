@@ -1,7 +1,6 @@
-use std::borrow::Cow;
 use std::cmp::min;
 
-use helix_core::doc_formatter::{DocumentFormatter, TextFormat};
+use helix_core::doc_formatter::{DocumentFormatter, GraphemeSource, TextFormat};
 use helix_core::graphemes::Grapheme;
 use helix_core::str_utils::char_to_byte_idx;
 use helix_core::syntax::Highlight;
@@ -186,7 +185,7 @@ pub fn render_text<'t>(
                     break;
                 }
             }
-            char_pos += grapheme.doc_chars as usize;
+            char_pos += grapheme.doc_chars();
             first_visisble_char_idx = char_pos;
             continue;
         }
@@ -226,7 +225,7 @@ pub fn render_text<'t>(
                 break;
             }
         }
-        char_pos += grapheme.doc_chars as usize;
+        char_pos += grapheme.doc_chars();
 
         // check if any positions translated on the fly (like cursor) has been reached
         for (char_idx, callback) in &mut *translated_positions {
@@ -240,9 +239,11 @@ pub fn render_text<'t>(
             }
         }
 
-        let grapheme_style = grapheme
-            .highlight
-            .map_or(style_span.0, |highlight| theme.highlight(highlight.0));
+        let grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source {
+            theme.highlight(highlight.0)
+        } else {
+            style_span.0
+        };
 
         renderer.draw_grapheme(
             grapheme.grapheme,
@@ -352,19 +353,22 @@ impl<'a> TextRenderer<'a> {
         let cut_off_start = self.col_offset.saturating_sub(position.col as usize);
         let is_whitespace = grapheme.is_whitespace();
 
+        // TODO is it correct to apply the whitspace style to all unicode white spaces?
         if is_whitespace {
             style = style.patch(self.whitespace_style);
         }
-        let (width, grapheme) = match grapheme {
+
+        let width = grapheme.width();
+        let grapheme = match grapheme {
             Grapheme::Tab { width } => {
                 let grapheme_tab_width = char_to_byte_idx(&self.tab, width as usize);
-                (width, Cow::from(&self.tab[..grapheme_tab_width]))
+                &self.tab[..grapheme_tab_width]
             }
-
-            Grapheme::Space => (1, Cow::from(&self.space)),
-            Grapheme::Nbsp => (1, Cow::from(&self.nbsp)),
-            Grapheme::Other { width, raw: str } => (width, str),
-            Grapheme::Newline => (1, Cow::from(&self.newline)),
+            // TODO special rendering for other whitespaces?
+            Grapheme::Other { ref g } if g == " " => &self.space,
+            Grapheme::Other { ref g } if g == "\u{00A0}" => &self.nbsp,
+            Grapheme::Other { ref g } => &*g,
+            Grapheme::Newline => &self.newline,
         };
 
         let in_bounds = self.col_offset <= (position.col as usize)
@@ -382,7 +386,7 @@ impl<'a> TextRenderer<'a> {
             let rect = Rect::new(
                 self.viewport.x as u16,
                 self.viewport.y + position.row as u16,
-                width - cut_off_start as u16,
+                (width - cut_off_start) as u16,
                 1,
             );
             self.surface.set_style(rect, style);

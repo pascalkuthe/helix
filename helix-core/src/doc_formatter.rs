@@ -18,52 +18,61 @@ mod test;
 
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 
-use crate::graphemes::Grapheme;
+use crate::graphemes::{Grapheme, GraphemeStr};
 use crate::syntax::Highlight;
 use crate::text_annotations::TextAnnotations;
 use crate::{Position, RopeGraphemes, RopeSlice};
+
+/// TODO make Highlight a u32  to reduce the size of this enum to a sinlge word.
+#[derive(Debug, Clone, Copy)]
+pub enum GraphemeSource {
+    Document {
+        codepoints: u32,
+    },
+    /// Inline virtual text can not be highlighted with a `Highlight` iterator
+    /// because it's not part of the document. Instead the `Highlight`
+    /// is emitted right by the document formatter
+    VirtualText {
+        highlight: Highlight,
+    },
+}
 
 /// A preprossed Grapheme that is ready for rendering
 /// with attachted styling data
 #[derive(Debug, Clone)]
 pub struct FormattedGrapheme<'a> {
     pub grapheme: Grapheme<'a>,
-    pub highlight: Option<Highlight>,
-    // the number of chars in the document required by this grapheme
-    pub doc_chars: u16,
+    pub source: GraphemeSource,
 }
 
 impl<'a> FormattedGrapheme<'a> {
+    pub fn new(
+        g: GraphemeStr<'a>,
+        visual_x: usize,
+        tab_width: u16,
+        source: GraphemeSource,
+    ) -> FormattedGrapheme<'a> {
+        FormattedGrapheme {
+            grapheme: Grapheme::new(g, visual_x, tab_width),
+            source,
+        }
+    }
     /// Returns whether this grapheme is virtual inline text
     pub fn is_virtual(&self) -> bool {
-        // The highlight field is only used for inline virtual text
-        // so it's save to reuse that.
-        // We can not use doc_chars here as that is also 0 for the EOF space
-        let is_virtual = self.highlight.is_some();
-        if is_virtual {
-            debug_assert_eq!(self.doc_chars, 0);
-        }
-        is_virtual
+        matches!(self.source, GraphemeSource::VirtualText { .. })
     }
+
     pub fn placeholder() -> Self {
         FormattedGrapheme {
-            grapheme: Grapheme::Space,
-            highlight: None,
-            doc_chars: 0,
+            grapheme: Grapheme::Other { g: " ".into() },
+            source: GraphemeSource::Document { codepoints: 0 },
         }
     }
 
-    pub fn new(
-        raw: Cow<'a, str>,
-        highlight: Option<Highlight>,
-        visual_x: usize,
-        tab_width: u16,
-        chars: u16,
-    ) -> FormattedGrapheme<'a> {
-        FormattedGrapheme {
-            grapheme: Grapheme::new(raw, visual_x, tab_width),
-            highlight,
-            doc_chars: chars,
+    pub fn doc_chars(&self) -> usize {
+        match self.source {
+            GraphemeSource::Document { codepoints } => codepoints as usize,
+            GraphemeSource::VirtualText { .. } => 0,
         }
     }
 
@@ -72,7 +81,7 @@ impl<'a> FormattedGrapheme<'a> {
     }
 
     /// Returns the approximate visual width of this grapheme,
-    pub fn width(&self) -> u16 {
+    pub fn width(&self) -> usize {
         self.grapheme.width()
     }
 
@@ -186,7 +195,7 @@ impl<'t> DocumentFormatter<'t> {
 
             if let Some(annotation) = self.annotations.next_inline_annotation_at(self.char_pos) {
                 self.inline_anntoation_graphemes = Some((
-                    UnicodeSegmentation::graphemes(annotation.text, true),
+                    UnicodeSegmentation::graphemes(&*annotation.text, true),
                     annotation.highlight,
                 ))
             } else {
@@ -196,18 +205,21 @@ impl<'t> DocumentFormatter<'t> {
     }
 
     fn advance_grapheme(&mut self, col: usize) -> Option<FormattedGrapheme<'t>> {
-        let (grapheme, style, doc_chars) =
+        let (grapheme, source) =
             if let Some((grapheme, highlight)) = self.next_inline_annotation_grapheme() {
-                (grapheme.into(), Some(highlight), 0)
+                (grapheme.into(), GraphemeSource::VirtualText { highlight })
             } else if let Some(grapheme) = self.graphemes.next() {
                 self.virtual_lines += self.annotations.annotation_lines_at(self.char_pos);
-                let codepoints = grapheme.len_chars();
+                let codepoints = grapheme.len_chars() as u32;
+
                 let overlay = self.annotations.overlay_at(self.char_pos);
                 let grapheme = match overlay {
-                    Some(overlay) => overlay.grapheme.into(),
-                    None => grapheme.into(),
+                    Some(overlay) => overlay.grapheme.clone(),
+                    None => Cow::from(grapheme).into(),
                 };
-                (grapheme, None, codepoints as u16)
+
+                self.char_pos += codepoints as usize;
+                (grapheme, GraphemeSource::Document { codepoints })
             } else {
                 if self.exhausted {
                     return None;
@@ -216,16 +228,13 @@ impl<'t> DocumentFormatter<'t> {
                 // EOF grapheme is required for rendering
                 // and correct position computations
                 return Some(FormattedGrapheme {
-                    grapheme: Grapheme::Space,
-                    highlight: None,
-                    doc_chars: 0,
+                    grapheme: Grapheme::Other { g: " ".into() },
+                    source: GraphemeSource::Document { codepoints: 0 },
                 });
             };
 
-        let grapheme =
-            FormattedGrapheme::new(grapheme, style, col, self.text_fmt.tab_width, doc_chars);
+        let grapheme = FormattedGrapheme::new(grapheme, col, self.text_fmt.tab_width, source);
 
-        self.char_pos += doc_chars as usize;
         Some(grapheme)
     }
 
@@ -244,7 +253,7 @@ impl<'t> DocumentFormatter<'t> {
             0
         };
 
-        let line_indent = indent_carry_over + self.text_fmt.wrap_indent;
+        let line_indent = (indent_carry_over + self.text_fmt.wrap_indent) as usize;
         self.visual_pos.col = line_indent as usize;
         self.virtual_lines -= virtual_lines_before_word;
         self.visual_pos.row += 1 + virtual_lines_before_word;
@@ -253,10 +262,10 @@ impl<'t> DocumentFormatter<'t> {
             let visual_x = line_indent + word_width;
             grapheme
                 .grapheme
-                .change_position(visual_x as usize, self.text_fmt.tab_width);
+                .change_position(visual_x, self.text_fmt.tab_width);
             word_width += grapheme.width();
         }
-        word_width as usize
+        word_width
     }
 
     fn advance_to_next_word(&mut self) {
@@ -305,7 +314,7 @@ impl<'t> DocumentFormatter<'t> {
             }
 
             let is_word_boundary = grapheme.is_word_boundary();
-            word_width += grapheme.width() as usize;
+            word_width += grapheme.width();
             self.word_buf.push(grapheme);
 
             if is_word_boundary {
@@ -346,7 +355,7 @@ impl<'t> Iterator for DocumentFormatter<'t> {
             self.visual_pos.col = 0;
             self.line_pos += 1;
         } else {
-            self.visual_pos.col += grapheme.width() as usize;
+            self.visual_pos.col += grapheme.width();
         }
         Some((grapheme, pos))
     }

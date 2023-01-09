@@ -115,7 +115,7 @@ pub fn visual_offset_from_block(
 
     for (grapheme, vpos) in formatter {
         last_pos = vpos;
-        char_pos += grapheme.doc_chars as usize;
+        char_pos += grapheme.doc_chars();
 
         if char_pos > pos {
             return (last_pos, block_start);
@@ -143,7 +143,7 @@ pub fn visual_offset_from_anchor(
 
     for (grapheme, vpos) in formatter {
         last_pos = vpos;
-        char_pos += grapheme.doc_chars as usize;
+        char_pos += grapheme.doc_chars();
 
         if char_pos > anchor && anchor_line.is_none() {
             anchor_line = Some(last_pos.row);
@@ -339,7 +339,7 @@ pub fn char_idx_at_visual_block_offset(
 
         last_char_idx = char_idx;
         last_row = grapheme_pos.row;
-        char_idx += grapheme.doc_chars as usize;
+        char_idx += grapheme.doc_chars();
     }
 
     (char_idx, 0)

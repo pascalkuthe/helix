@@ -2,19 +2,20 @@ use std::cell::Cell;
 use std::convert::identity;
 use std::ops::Range;
 
+use crate::graphemes::GraphemeStr;
 use crate::syntax::Highlight;
 
 #[derive(Debug)]
-pub struct InlineAnnotation<'t> {
+pub struct InlineAnnotation {
     pub highlight: Highlight,
-    pub text: &'t str,
+    pub text: Box<str>,
     pub char_idx: usize,
 }
 
 #[derive(Debug)]
 pub struct Overlay<'t> {
     pub char_idx: usize,
-    pub grapheme: &'t str,
+    pub grapheme: GraphemeStr<'t>,
     pub highlight: Option<Highlight>,
 }
 
@@ -76,9 +77,11 @@ fn reset_pos<T>(layers: &[Layer<T>], pos: usize, get_pos: impl Fn(&T) -> usize) 
     }
 }
 
+/// Annotations that change that is displayed when the document is render.
+/// Also commonly called virtual text.
 #[derive(Default, Debug, Clone)]
 pub struct TextAnnotations<'t> {
-    inline_annotations: Vec<Layer<'t, InlineAnnotation<'t>>>,
+    inline_annotations: Vec<Layer<'t, InlineAnnotation>>,
     overlays: Vec<Layer<'t, Overlay<'t>>>,
     line_annotations: Vec<Layer<'t, LineAnnotation>>,
 }
@@ -113,7 +116,7 @@ impl<'t> TextAnnotations<'t> {
         highlights
     }
 
-    pub fn add_inline_annotations(&mut self, layer: &'t [InlineAnnotation<'t>]) -> &mut Self {
+    pub fn add_inline_annotations(&mut self, layer: &'t [InlineAnnotation]) -> &mut Self {
         self.inline_annotations.push(layer.into());
         self
     }
@@ -135,7 +138,7 @@ impl<'t> TextAnnotations<'t> {
     pub(crate) fn next_inline_annotation_at(
         &self,
         char_idx: usize,
-    ) -> Option<&'t InlineAnnotation<'t>> {
+    ) -> Option<&'t InlineAnnotation> {
         self.inline_annotations
             .iter()
             .find_map(|layer| layer.consume(char_idx, |annot| annot.char_idx))
