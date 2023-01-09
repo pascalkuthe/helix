@@ -348,10 +348,7 @@ impl View {
         let visual_height = self.offset.vertical_offset + viewport.height as usize;
 
         // fast path when the EOF is not visible on the screen,
-        if doc_text.line_to_char(
-            doc_text.char_to_line(self.offset.anchor) + visual_height.saturating_sub(1),
-        ) < doc_text.len_lines()
-        {
+        if self.estimate_last_doc_line(doc) < doc_text.len_lines() - 1 {
             return visual_height.saturating_sub(1);
         }
 
