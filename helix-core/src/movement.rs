@@ -127,7 +127,7 @@ pub fn move_vertically(
         Direction::Backward => line_idx.saturating_sub(count),
     };
 
-    let slice = if new_line_idx >= slice.len_lines() - 1 {
+    let line = if new_line_idx >= slice.len_lines() - 1 {
         // there is no line terminator for the last line
         // so the logic below is not necessary here
         new_line_idx = slice.len_lines() - 1;
@@ -140,10 +140,10 @@ pub fn move_vertically(
         slice.slice(..new_line_end)
     };
 
-    let new_line_start = slice.line_to_char(new_line_idx);
+    let new_line_start = line.line_to_char(new_line_idx);
 
     let (new_pos, _) = char_idx_at_visual_block_offset(
-        slice,
+        line,
         new_line_start,
         new_row as usize,
         new_col as usize,
