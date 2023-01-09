@@ -19,7 +19,6 @@ pub fn tab_width_at(visual_x: usize, tab_width: u16) -> usize {
     tab_width as usize - (visual_x % tab_width as usize)
 }
 
-/// A preprossed Grapheme that is ready for rendering
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Grapheme<'a> {
     Newline,

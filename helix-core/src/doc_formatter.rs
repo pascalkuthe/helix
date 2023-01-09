@@ -1,7 +1,7 @@
 //! The `DocumentFormatter` forms the bridge between the raw document text
 //! and onscreen positioning. It yields the text graphemes as an iterator
-//! and transverses (part) of the document text. During that transversal it
-//! handles grapheme detection, softwrapping and annotation.
+//! and traverses (part) of the document text. During that traversal it
+//! handles grapheme detection, softwrapping and annotations.
 //! It yields `FormattedGrapheme`s and their corresponding visual coortdinates.
 //!
 //! As both virtual text and softwrapping can insert additional lines into the document
@@ -37,8 +37,6 @@ pub enum GraphemeSource {
     },
 }
 
-/// A preprossed Grapheme that is ready for rendering
-/// with attachted styling data
 #[derive(Debug, Clone)]
 pub struct FormattedGrapheme<'a> {
     pub grapheme: Grapheme<'a>,
@@ -80,7 +78,6 @@ impl<'a> FormattedGrapheme<'a> {
         self.grapheme.is_whitespace()
     }
 
-    /// Returns the approximate visual width of this grapheme,
     pub fn width(&self) -> usize {
         self.grapheme.width()
     }
