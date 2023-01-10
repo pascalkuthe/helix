@@ -1217,7 +1217,7 @@ impl Document {
             soft_wrap: soft_wrap.enable,
             tab_width: self.tab_width() as u16,
             max_wrap: soft_wrap.max_wrap.min(viewport_width / 4),
-            max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width / 4),
+            max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width * 2 / 5),
             viewport_width,
             wrap_indicator: "↪ ".into(),
             wrap_indicator_highlight: theme

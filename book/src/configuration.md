@@ -264,8 +264,8 @@ Options for soft wrapping lines that exceed the view width
 | Key                 | Description                                                  | Default |
 | ---                 | ---                                                          | ---     |
 | `enable`            | Whether soft wrapping is enabled.                            | `false` |
-| `max-wrap`          | Maximum free space left at the end of the line.              | `5`     |
-| `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line. | `80`    |
+| `max-wrap`          | Maximum free space left at the end of the line.              | `20`     |
+| `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line. | `40`    |
 | `wrap-indicator`    | Text inserted before soft wrapped lines.                     | `↪ `    |
 
 Example:
@@ -273,7 +273,7 @@ Example:
 ```toml
 [editor.soft-wrap]
 enable = true
-max-wrap = 8 # increase value to reduce forced mid-word wrapping
+max-wrap = 25 # increase value to reduce forced mid-word wrapping
 max-indent-retain = 0 
 wrap-indicator = " " 
 ```

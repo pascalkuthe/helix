@@ -194,7 +194,7 @@ pub struct SoftWrap {
     ///
     /// This is automatically hardlimited to a quarter of the viewport to ensure correct display on small views.
     ///
-    /// Default to 5
+    /// Default to 20
     pub max_wrap: u16,
     /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
     /// If a line is indented further then this limit it is rendered at the start of the viewport instead.
@@ -213,8 +213,8 @@ impl Default for SoftWrap {
     fn default() -> Self {
         SoftWrap {
             enable: false,
-            max_wrap: 5,
-            max_indent_retain: 80,
+            max_wrap: 20,
+            max_indent_retain: 40,
             wrap_indicator: "↪ ".into(),
         }
     }
