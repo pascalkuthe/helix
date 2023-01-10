@@ -295,12 +295,12 @@ impl EditorView {
         _theme: &Theme,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
-        let row = text.char_to_line(anchor);
+        let row = text.char_to_line(anchor.min(text.len_chars()));
 
         let range = {
             // Calculate viewport byte ranges:
             // Saturating subs to make it inclusive zero indexing.
-            let last_line = doc.text().len_lines().saturating_sub(1);
+            let last_line = text.len_lines().saturating_sub(1);
             let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
             let start = text.line_to_byte(row.min(last_line));
             let end = text.line_to_byte(last_visible_line + 1);
