@@ -271,7 +271,7 @@ impl View {
         }
 
         if text_fmt.soft_wrap {
-            offset.vertical_offset = 0;
+            offset.horizontal_offset = 0;
         } else {
             // determine the current visual column of the text
             let col = visual_off
