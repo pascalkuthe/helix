@@ -459,7 +459,7 @@ impl View {
         let text = doc.text().slice(..);
 
         let text_row = row as usize + self.offset.vertical_offset;
-        let text_col = column as usize;
+        let text_col = column as usize + self.offset.horizontal_offset;
 
         let (char_idx, virt_lines) = char_idx_at_visual_offset(
             text,
