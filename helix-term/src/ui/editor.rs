@@ -282,7 +282,6 @@ impl EditorView {
 
             start..end
         };
-        text_annotations.reset_pos(range.start);
         text_annotations.collect_overlay_highlights(range)
     }
 
