@@ -1219,10 +1219,10 @@ impl Document {
             tab_width,
             max_wrap: soft_wrap.max_wrap.min(viewport_width / 4),
             max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width * 2 / 5),
-            wrap_indicator: "↪ ".into(),
             // avoid spinning forever when the window manager
             // sets the size to something tiny
             viewport_width,
+            wrap_indicator: soft_wrap.wrap_indicator.clone().into_boxed_str(),
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_scope_index("ui.virtual.whitespace"))
                 .map(Highlight),
