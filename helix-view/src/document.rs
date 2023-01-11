@@ -1213,13 +1213,16 @@ impl Document {
     pub fn text_format(&self, viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
         let config = self.config.load();
         let soft_wrap = &config.soft_wrap;
+        let tab_width = self.tab_width() as u16;
         TextFormat {
-            soft_wrap: soft_wrap.enable,
-            tab_width: self.tab_width() as u16,
+            soft_wrap: soft_wrap.enable && viewport_width > 10,
+            tab_width,
             max_wrap: soft_wrap.max_wrap.min(viewport_width / 4),
             max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width * 2 / 5),
-            viewport_width,
             wrap_indicator: "↪ ".into(),
+            // avoid spinning forever when the window manager
+            // sets the size to something tiny
+            viewport_width,
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_scope_index("ui.virtual.whitespace"))
                 .map(Highlight),
