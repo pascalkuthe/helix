@@ -344,6 +344,11 @@ impl<'t> DocumentFormatter<'t> {
     pub fn line_pos(&self) -> usize {
         self.line_pos
     }
+
+    /// returns the visual pos of the **next** grapheme that will be yielded
+    pub fn visual_pos(&self) -> Position {
+        self.visual_pos
+    }
 }
 
 impl<'t> Iterator for DocumentFormatter<'t> {

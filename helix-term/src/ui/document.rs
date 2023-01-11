@@ -116,6 +116,40 @@ pub fn render_document(
     )
 }
 
+fn translate_positions(
+    char_pos: usize,
+    first_visisble_char_idx: usize,
+    translated_positions: &mut [TranslatedPosition],
+    text_fmt: &TextFormat,
+    renderer: &mut TextRenderer,
+    pos: Position,
+) {
+    // check if any positions translated on the fly (like cursor) has been reached
+    for (char_idx, callback) in &mut *translated_positions {
+        if *char_idx < char_pos && *char_idx >= first_visisble_char_idx {
+            // by replacing the char_index with usize::MAX large number we ensure
+            // that the same position is only translated once
+            // text will never reach usize::MAX as rust memory allocations are limited
+            // to isize::MAX
+            *char_idx = usize::MAX;
+
+            if text_fmt.soft_wrap {
+                callback(renderer, pos)
+            } else if pos.col >= renderer.col_offset
+                && pos.col - renderer.col_offset < renderer.viewport.width as usize
+            {
+                callback(
+                    renderer,
+                    Position {
+                        row: pos.row,
+                        col: pos.col - renderer.col_offset,
+                    },
+                )
+            }
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn render_text<'t>(
     renderer: &mut TextRenderer,
@@ -143,9 +177,8 @@ pub fn render_text<'t>(
     row_off += offset.vertical_offset;
     assert_eq!(0, offset.vertical_offset);
 
-    let mut formatter =
-        DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, offset.anchor)
-            .0;
+    let (mut formatter, mut first_visible_char_idx) =
+        DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, offset.anchor);
     let mut styles = StyleIter {
         text_style: renderer.text_style,
         active_highlights: Vec::with_capacity(64),
@@ -164,7 +197,6 @@ pub fn render_text<'t>(
     let mut style_span = styles
         .next()
         .unwrap_or_else(|| (Style::default(), usize::MAX));
-    let mut first_visisble_char_idx = 0;
 
     loop {
         // formattter.line_pos returns to line index of the next grapheme
@@ -174,6 +206,17 @@ pub fn render_text<'t>(
         let (grapheme, mut pos) = if let Some(it) = formatter.next() {
             it
         } else {
+            let mut last_pos = formatter.visual_pos();
+            last_pos.col -= 1;
+            // check if any positions translated on the fly (like cursor) are at the EOF
+            translate_positions(
+                char_pos + 1,
+                first_visible_char_idx,
+                translated_positions,
+                text_fmt,
+                renderer,
+                last_pos,
+            );
             break;
         };
 
@@ -188,7 +231,7 @@ pub fn render_text<'t>(
                 }
             }
             char_pos += grapheme.doc_chars();
-            first_visisble_char_idx = char_pos;
+            first_visible_char_idx = char_pos + 1;
             continue;
         }
         pos.row -= row_off;
@@ -224,35 +267,20 @@ pub fn render_text<'t>(
             style_span = if let Some(style_span) = styles.next() {
                 style_span
             } else {
-                break;
+                (Style::default(), usize::MAX)
             }
         }
         char_pos += grapheme.doc_chars();
 
         // check if any positions translated on the fly (like cursor) has been reached
-        for (char_idx, callback) in &mut *translated_positions {
-            if *char_idx < char_pos && *char_idx > first_visisble_char_idx {
-                // by replacing the char_index with usize::MAX large number we ensure
-                // that the same position is only translated once
-                // text will never reach usize::MAX as rust memory allocations are limited
-                // to isize::MAX
-                *char_idx = usize::MAX;
-
-                if text_fmt.soft_wrap {
-                    callback(renderer, pos)
-                } else if pos.col >= renderer.col_offset
-                    && pos.col - renderer.col_offset < renderer.viewport.width as usize
-                {
-                    callback(
-                        renderer,
-                        Position {
-                            row: pos.row,
-                            col: pos.col - renderer.col_offset,
-                        },
-                    )
-                }
-            }
-        }
+        translate_positions(
+            char_pos,
+            first_visible_char_idx,
+            translated_positions,
+            text_fmt,
+            renderer,
+            pos,
+        );
 
         let grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source {
             let style = renderer.text_style;
@@ -273,6 +301,7 @@ pub fn render_text<'t>(
             pos,
         );
     }
+
     renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
     for line_decoration in &mut *line_decorations {
         line_decoration.render_forground(renderer, last_line_pos, char_pos);
