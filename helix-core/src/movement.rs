@@ -76,8 +76,9 @@ pub fn move_vertically_visual(
         Direction::Backward => -(count as isize),
     };
 
-    // TODO how to handle inline annotations that span an entire visual line (very unlikely)
-    // compute visual offset relative to block start to avoid transversing the block twice
+    // TODO how to handle inline annotations that span an entire visual line (very unlikely).
+
+    // Compute visual offset relative to block start to avoid transversing the block twice
     row_off += visual_pos.row as isize;
     let new_pos = char_idx_at_visual_offset(
         slice,

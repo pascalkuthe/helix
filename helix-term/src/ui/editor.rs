@@ -198,7 +198,6 @@ impl EditorView {
             translated_positions.push((cursor, Box::new(update_cursor_cache)));
         }
 
-        // TODO allow smooth scrolling softwrap/virtual text
         render_document(
             surface,
             inner,

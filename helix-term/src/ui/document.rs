@@ -34,7 +34,8 @@ impl<F: FnMut(&mut TextRenderer, LinePos)> LineDecoration for F {
 
 /// A wrapper around a HighlightIterator
 /// that merges the layered highlights to create the final text style
-/// and yields the active text style and the
+/// and yields the active text style and the char_idx where the active
+/// style will have to be recomputed.
 struct StyleIter<'a, H: Iterator<Item = HighlightEvent>> {
     text_style: Style,
     active_highlights: Vec<Highlight>,
@@ -143,7 +144,8 @@ pub fn render_text<'t>(
     assert_eq!(0, offset.vertical_offset);
 
     let mut formatter =
-        DocumentFormatter::new_at_prev_block(text, text_fmt, text_annotations, offset.anchor).0;
+        DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, offset.anchor)
+            .0;
     let mut styles = StyleIter {
         text_style: renderer.text_style,
         active_highlights: Vec::with_capacity(64),

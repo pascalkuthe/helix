@@ -312,7 +312,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
             }
             let mut decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
 
-            // TODO: avoid set_style and instead handle trough specical LineDecoration function instead?
+            // TODO: avoid set_style and instead handle through special LineDecoration function instead?
             if let Some((start, end)) = range {
                 let style = cx
                     .editor
@@ -345,24 +345,6 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 &mut decorations,
                 &mut [],
             );
-
-            // // highlight the line
-            // if let Some((start, end)) = range {
-            //     let offset = start.saturating_sub(first_line) as u16;
-            //     surface.set_style(
-            //         Rect::new(
-            //             inner.x,
-            //             inner.y + offset,
-            //             inner.width,
-            //             (end.saturating_sub(start) as u16 + 1)
-            //                 .min(inner.height.saturating_sub(offset)),
-            //         ),
-            //         cx.editor
-            //             .theme
-            //             .try_get("ui.highlight")
-            //             .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
-            //     );
-            // }
         }
     }
 

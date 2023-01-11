@@ -2,7 +2,7 @@
 //! and onscreen positioning. It yields the text graphemes as an iterator
 //! and traverses (part) of the document text. During that traversal it
 //! handles grapheme detection, softwrapping and annotations.
-//! It yields `FormattedGrapheme`s and their corresponding visual coortdinates.
+//! It yields `FormattedGrapheme`s and their corresponding visual coordinates.
 //!
 //! As both virtual text and softwrapping can insert additional lines into the document
 //! it is generally not possible to find the start of the previous visual line.
@@ -135,7 +135,7 @@ pub struct DocumentFormatter<'t> {
     // softwrap specific
     /// The indentation of the current line
     /// Is set to `None` if the indentation level is not yet know
-    /// because no non-whitespace grahemes has been encountered yet
+    /// because no non-whitespace graphemes has been encountered yet
     indent_level: Option<usize>,
     /// In case a long word needs to be split a single grapheme might need to be wrapped
     /// while the rest of the word stays on the same line
@@ -152,7 +152,7 @@ impl<'t> DocumentFormatter<'t> {
     /// This is usally just a normal line break.
     /// However very long lines are always wrapped at constant intervals that can be cheaply calculated
     /// to avoid pathological behaviour.
-    pub fn new_at_prev_block(
+    pub fn new_at_prev_checkpoint(
         text: RopeSlice<'t>,
         text_fmt: &'t TextFormat,
         annotations: &'t TextAnnotations<'t>,

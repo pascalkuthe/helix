@@ -42,7 +42,7 @@ impl<'t> DocumentFormatter<'t> {
 }
 
 fn softwrap_text(text: &str, char_pos: usize) -> String {
-    DocumentFormatter::new_at_prev_block(
+    DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(true),
         &TextAnnotations::default(),
@@ -103,7 +103,7 @@ fn long_word_softwrap() {
 }
 
 fn overlay_text(text: &str, char_pos: usize, softwrap: bool, overlays: &[Overlay]) -> String {
-    DocumentFormatter::new_at_prev_block(
+    DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(softwrap),
         TextAnnotations::default().add_overlay(overlays, None),
@@ -163,7 +163,7 @@ fn annotate_text(
     softwrap: bool,
     annotations: &[InlineAnnotation],
 ) -> String {
-    DocumentFormatter::new_at_prev_block(
+    DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(softwrap),
         TextAnnotations::default().add_inline_annotations(annotations, None),
@@ -203,7 +203,7 @@ fn annotation() {
 #[test]
 fn annotation_and_overlay() {
     assert_eq!(
-        DocumentFormatter::new_at_prev_block(
+        DocumentFormatter::new_at_prev_checkpoint(
             "bbar".into(),
             &TextFormat::new_test(false),
             TextAnnotations::default()
