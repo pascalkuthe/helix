@@ -194,8 +194,12 @@ pub fn line_numbers<'doc>(
 
                 if first_visual_line {
                     write!(out, "{:>1$}", display_num, width).unwrap();
+                } else {
+                    write!(out, "{:>1$}", " ", width).unwrap();
                 }
-                Some(style)
+
+                // TODO: Use then_some when MSRV reaches 1.62
+                first_visual_line.then(|| style)
             }
         },
     )

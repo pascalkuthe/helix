@@ -593,6 +593,8 @@ impl EditorView {
 
         let gutter_style = theme.get("ui.gutter");
         let gutter_selected_style = theme.get("ui.gutter.selected");
+        let gutter_style_virtual = theme.get("ui.gutter.virtual");
+        let gutter_selected_style_virtual = theme.get("ui.gutter.selected.virtual");
 
         for gutter_type in view.gutters() {
             let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
@@ -606,10 +608,11 @@ impl EditorView {
                 let x = viewport.x + offset;
                 let y = viewport.y + pos.visual_line;
 
-                let gutter_style = if selected {
-                    gutter_selected_style
-                } else {
-                    gutter_style
+                let gutter_style = match (selected, pos.first_visual_line) {
+                    (false, false) => gutter_style,
+                    (true, false) => gutter_selected_style,
+                    (false, true) => gutter_style_virtual,
+                    (true, true) => gutter_selected_style_virtual,
                 };
 
                 if let Some(style) =
