@@ -952,7 +952,7 @@ impl Editor {
 
     fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
         // `ui.selection` is the only scope required to be able to render a theme.
-        if theme.find_scope_index("ui.selection").is_none() {
+        if theme.find_scope_index_exact("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
             return;
         }

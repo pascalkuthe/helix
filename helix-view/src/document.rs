@@ -1224,7 +1224,7 @@ impl Document {
             viewport_width,
             wrap_indicator: soft_wrap.wrap_indicator.clone().into_boxed_str(),
             wrap_indicator_highlight: theme
-                .and_then(|theme| theme.find_scope_index("ui.virtual.whitespace"))
+                .and_then(|theme| theme.find_scope_index_exact("ui.virtual.whitespace"))
                 .map(Highlight),
         }
     }

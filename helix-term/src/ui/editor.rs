@@ -346,11 +346,11 @@ impl EditorView {
         use helix_core::diagnostic::Severity;
         let get_scope_of = |scope| {
             theme
-            .find_scope_index(scope)
+            .find_scope_index_exact(scope)
             // get one of the themes below as fallback values
-            .or_else(|| theme.find_scope_index("diagnostic"))
-            .or_else(|| theme.find_scope_index("ui.cursor"))
-            .or_else(|| theme.find_scope_index("ui.selection"))
+            .or_else(|| theme.find_scope_index_exact("diagnostic"))
+            .or_else(|| theme.find_scope_index_exact("ui.cursor"))
+            .or_else(|| theme.find_scope_index_exact("ui.selection"))
             .expect(
                 "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
             )
@@ -413,29 +413,29 @@ impl EditorView {
         let cursor_is_block = cursorkind == CursorKind::Block;
 
         let selection_scope = theme
-            .find_scope_index("ui.selection")
+            .find_scope_index_exact("ui.selection")
             .expect("could not find `ui.selection` scope in the theme!");
         let primary_selection_scope = theme
-            .find_scope_index("ui.selection.primary")
+            .find_scope_index_exact("ui.selection.primary")
             .unwrap_or(selection_scope);
         let base_cursor_scope = theme
-            .find_scope_index("ui.cursor")
+            .find_scope_index_exact("ui.cursor")
             .unwrap_or(selection_scope);
         let base_primary_cursor_scope = theme
             .find_scope_index("ui.cursor.primary")
             .unwrap_or(base_cursor_scope);
 
         let cursor_scope = match mode {
-            Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
-            Mode::Select => theme.find_scope_index("ui.cursor.select"),
-            Mode::Normal => theme.find_scope_index("ui.cursor.normal"),
+            Mode::Insert => theme.find_scope_index_exact("ui.cursor.insert"),
+            Mode::Select => theme.find_scope_index_exact("ui.cursor.select"),
+            Mode::Normal => theme.find_scope_index_exact("ui.cursor.normal"),
         }
         .unwrap_or(base_cursor_scope);
 
         let primary_cursor_scope = match mode {
-            Mode::Insert => theme.find_scope_index("ui.cursor.primary.insert"),
-            Mode::Select => theme.find_scope_index("ui.cursor.primary.select"),
-            Mode::Normal => theme.find_scope_index("ui.cursor.primary.normal"),
+            Mode::Insert => theme.find_scope_index_exact("ui.cursor.primary.insert"),
+            Mode::Select => theme.find_scope_index_exact("ui.cursor.primary.select"),
+            Mode::Normal => theme.find_scope_index_exact("ui.cursor.primary.normal"),
         }
         .unwrap_or(base_primary_cursor_scope);
 
@@ -512,7 +512,7 @@ impl EditorView {
 
             if let Some(pos) = match_brackets::find_matching_bracket(syntax, doc.text(), pos) {
                 // ensure col is on screen
-                if let Some(highlight) = theme.find_scope_index("ui.cursor.match") {
+                if let Some(highlight) = theme.find_scope_index_exact("ui.cursor.match") {
                     return vec![(highlight, pos..pos + 1)];
                 }
             }
