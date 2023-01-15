@@ -168,7 +168,7 @@ impl<'t> DocumentFormatter<'t> {
                 annotations,
                 visual_pos: Position { row: 0, col: 0 },
                 graphemes: RopeGraphemes::new(text.slice(block_char_idx..)),
-                char_pos: 0,
+                char_pos: block_char_idx,
                 exhausted: false,
                 virtual_lines: 0,
                 indent_level: None,
