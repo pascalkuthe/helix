@@ -1,16 +1,17 @@
 use std::cell::Cell;
 use std::convert::identity;
 use std::ops::Range;
+use std::rc::Rc;
 
-use crate::graphemes::GraphemeStr;
 use crate::syntax::Highlight;
+use crate::Tendril;
 
 /// An inline annotation is continuos text show
 /// on the screen before the grapheme that starts at
-/// `char_idx`.
-#[derive(Debug)]
+/// `char_idx`
+#[derive(Debug, Clone)]
 pub struct InlineAnnotation {
-    pub text: Box<str>,
+    pub text: Tendril,
     pub char_idx: usize,
 }
 
@@ -67,10 +68,10 @@ pub struct InlineAnnotation {
 ///   grapheme: "xy".into(),
 /// };
 /// ```
-#[derive(Debug)]
-pub struct Overlay<'t> {
+#[derive(Debug, Clone)]
+pub struct Overlay {
     pub char_idx: usize,
-    pub grapheme: GraphemeStr<'t>,
+    pub grapheme: Tendril,
 }
 
 /// Line annotations allow for virtual text between normal
@@ -82,30 +83,30 @@ pub struct Overlay<'t> {
 ///
 /// To insert a line after a documet line simply set
 /// `anchor_char_idx` to `doc.line_to_char(line_idx)`
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LineAnnotation {
     pub anchor_char_idx: usize,
     pub height: usize,
 }
 
 #[derive(Debug)]
-struct Layer<'a, A, M> {
-    annotations: &'a [A],
+struct Layer<A, M> {
+    annotations: Rc<[A]>,
     current_index: Cell<usize>,
     metadata: M,
 }
 
-impl<'a, A, M: Clone> Clone for Layer<'a, A, M> {
+impl<'a, A, M: Clone> Clone for Layer<A, M> {
     fn clone(&self) -> Self {
         Layer {
-            annotations: self.annotations,
+            annotations: self.annotations.clone(),
             current_index: self.current_index.clone(),
             metadata: self.metadata.clone(),
         }
     }
 }
 
-impl<'a, A, M> Layer<'a, A, M> {
+impl<A, M> Layer<A, M> {
     pub fn reset_pos(&self, char_idx: usize, get_char_idx: impl Fn(&A) -> usize) {
         let new_index = self
             .annotations
@@ -115,7 +116,7 @@ impl<'a, A, M> Layer<'a, A, M> {
         self.current_index.set(new_index);
     }
 
-    pub fn consume(&self, char_idx: usize, get_char_idx: impl Fn(&A) -> usize) -> Option<&'a A> {
+    pub fn consume(&self, char_idx: usize, get_char_idx: impl Fn(&A) -> usize) -> Option<&A> {
         let annot = self.annotations.get(self.current_index.get())?;
         debug_assert!(get_char_idx(annot) >= char_idx);
         if get_char_idx(annot) == char_idx {
@@ -127,8 +128,8 @@ impl<'a, A, M> Layer<'a, A, M> {
     }
 }
 
-impl<'a, A, M> From<(&'a [A], M)> for Layer<'a, A, M> {
-    fn from((annotations, metadata): (&'a [A], M)) -> Layer<'a, A, M> {
+impl<A, M> From<(Rc<[A]>, M)> for Layer<A, M> {
+    fn from((annotations, metadata): (Rc<[A]>, M)) -> Layer<A, M> {
         Layer {
             annotations,
             current_index: Cell::new(0),
@@ -146,13 +147,13 @@ fn reset_pos<A, M>(layers: &[Layer<A, M>], pos: usize, get_pos: impl Fn(&A) -> u
 /// Annotations that change that is displayed when the document is render.
 /// Also commonly called virtual text.
 #[derive(Default, Debug, Clone)]
-pub struct TextAnnotations<'t> {
-    inline_annotations: Vec<Layer<'t, InlineAnnotation, Option<Highlight>>>,
-    overlays: Vec<Layer<'t, Overlay<'t>, Option<Highlight>>>,
-    line_annotations: Vec<Layer<'t, LineAnnotation, ()>>,
+pub struct TextAnnotations {
+    inline_annotations: Vec<Layer<InlineAnnotation, Option<Highlight>>>,
+    overlays: Vec<Layer<Overlay, Option<Highlight>>>,
+    line_annotations: Vec<Layer<LineAnnotation, ()>>,
 }
 
-impl<'t> TextAnnotations<'t> {
+impl TextAnnotations {
     /// Prepare the TextAnnotations for iteration starting at char_idx
     pub fn reset_pos(&self, char_idx: usize) {
         reset_pos(&self.inline_annotations, char_idx, |annot| annot.char_idx);
@@ -193,7 +194,7 @@ impl<'t> TextAnnotations<'t> {
     /// the annotations that belong to the layers added first will be shown first.
     pub fn add_inline_annotations(
         &mut self,
-        layer: &'t [InlineAnnotation],
+        layer: Rc<[InlineAnnotation]>,
         highlight: Option<Highlight>,
     ) -> &mut Self {
         self.inline_annotations.push((layer, highlight).into());
@@ -211,11 +212,7 @@ impl<'t> TextAnnotations<'t> {
     ///
     /// If multiple layers contain overlay at the same position
     /// the overlay from the layer added last will be show.
-    pub fn add_overlay(
-        &mut self,
-        layer: &'t [Overlay<'t>],
-        highlight: Option<Highlight>,
-    ) -> &mut Self {
+    pub fn add_overlay(&mut self, layer: Rc<[Overlay]>, highlight: Option<Highlight>) -> &mut Self {
         self.overlays.push((layer, highlight).into());
         self
     }
@@ -224,7 +221,7 @@ impl<'t> TextAnnotations<'t> {
     ///
     /// The line annotations **must be sorted** by their `char_idx`.
     /// Multiple line annotations with the smame `char_idx` **are not allowed**.
-    pub fn add_line_annotation(&mut self, layer: &'t [LineAnnotation]) -> &mut Self {
+    pub fn add_line_annotation(&mut self, layer: Rc<[LineAnnotation]>) -> &mut Self {
         self.line_annotations.push((layer, ()).into());
         self
     }
@@ -238,17 +235,14 @@ impl<'t> TextAnnotations<'t> {
     pub(crate) fn next_inline_annotation_at(
         &self,
         char_idx: usize,
-    ) -> Option<(&'t InlineAnnotation, Option<Highlight>)> {
+    ) -> Option<(&InlineAnnotation, Option<Highlight>)> {
         self.inline_annotations.iter().find_map(|layer| {
             let annotation = layer.consume(char_idx, |annot| annot.char_idx)?;
             Some((annotation, layer.metadata))
         })
     }
 
-    pub(crate) fn overlay_at(
-        &self,
-        char_idx: usize,
-    ) -> Option<(&'t Overlay<'t>, Option<Highlight>)> {
+    pub(crate) fn overlay_at(&self, char_idx: usize) -> Option<(&Overlay, Option<Highlight>)> {
         let mut overlay = None;
         for layer in &self.overlays {
             if let Some(new_overlay) = layer.consume(char_idx, |annot| annot.char_idx) {

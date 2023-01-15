@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::doc_formatter::{DocumentFormatter, TextFormat};
 use crate::text_annotations::{InlineAnnotation, Overlay, TextAnnotations};
 
@@ -106,7 +108,7 @@ fn overlay_text(text: &str, char_pos: usize, softwrap: bool, overlays: &[Overlay
     DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(softwrap),
-        TextAnnotations::default().add_overlay(overlays, None),
+        TextAnnotations::default().add_overlay(overlays.into(), None),
         char_pos,
     )
     .0
@@ -166,7 +168,7 @@ fn annotate_text(
     DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(softwrap),
-        TextAnnotations::default().add_inline_annotations(annotations, None),
+        TextAnnotations::default().add_inline_annotations(annotations.into(), None),
         char_pos,
     )
     .0
@@ -208,17 +210,17 @@ fn annotation_and_overlay() {
             &TextFormat::new_test(false),
             TextAnnotations::default()
                 .add_inline_annotations(
-                    &[InlineAnnotation {
+                    Rc::new([InlineAnnotation {
                         char_idx: 0,
                         text: "fooo".into(),
-                    }],
+                    }]),
                     None
                 )
                 .add_overlay(
-                    &[Overlay {
+                    Rc::new([Overlay {
                         char_idx: 0,
                         grapheme: "\t".into(),
-                    }],
+                    }]),
                     None
                 ),
             0,

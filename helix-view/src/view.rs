@@ -409,11 +409,7 @@ impl View {
         Some(pos)
     }
 
-    pub fn text_annotations<'d>(
-        &self,
-        doc: &'d Document,
-        theme: Option<&Theme>,
-    ) -> TextAnnotations<'d> {
+    pub fn text_annotations(&self, doc: &Document, theme: Option<&Theme>) -> TextAnnotations {
         // TODO custom annotations for custom views like side by side diffs
         doc.text_annotations(theme)
     }

@@ -264,8 +264,8 @@ impl EditorView {
             .for_each(|area| surface.set_style(area, ruler_theme))
     }
 
-    pub fn overlay_syntax_highlights<'doc>(
-        doc: &'doc Document,
+    pub fn overlay_syntax_highlights(
+        doc: &Document,
         anchor: usize,
         height: u16,
         text_annotations: &TextAnnotations,

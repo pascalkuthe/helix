@@ -116,7 +116,7 @@ impl Default for TextFormat {
 #[derive(Debug)]
 pub struct DocumentFormatter<'t> {
     text_fmt: &'t TextFormat,
-    annotations: &'t TextAnnotations<'t>,
+    annotations: &'t TextAnnotations,
 
     /// The visual position at the end of the last yielded word boundary
     visual_pos: Position,
@@ -155,7 +155,7 @@ impl<'t> DocumentFormatter<'t> {
     pub fn new_at_prev_checkpoint(
         text: RopeSlice<'t>,
         text_fmt: &'t TextFormat,
-        annotations: &'t TextAnnotations<'t>,
+        annotations: &'t TextAnnotations,
         char_idx: usize,
     ) -> (Self, usize) {
         // TODO divide long lines into blocks to avoid bad performance for long lines
@@ -215,7 +215,7 @@ impl<'t> DocumentFormatter<'t> {
 
                 let overlay = self.annotations.overlay_at(self.char_pos);
                 let grapheme = match overlay {
-                    Some((overlay, _)) => overlay.grapheme.clone(),
+                    Some((overlay, _)) => overlay.grapheme.as_str().into(),
                     None => Cow::from(grapheme).into(),
                 };
 
