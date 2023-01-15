@@ -207,8 +207,7 @@ impl TextAnnotations {
     /// patched on top of `ui.text`.
     ///
     /// The overlays **must be sorted** by their `char_idx`.
-    /// Multiple overlays with the same `char_idx` **are not allowed**.
-    /// Use additional layers for overlapping overlays instead.
+    /// Multiple overlays with the same `char_idx` **are allowed**.
     ///
     /// If multiple layers contain overlay at the same position
     /// the overlay from the layer added last will be show.
@@ -245,8 +244,8 @@ impl TextAnnotations {
     pub(crate) fn overlay_at(&self, char_idx: usize) -> Option<(&Overlay, Option<Highlight>)> {
         let mut overlay = None;
         for layer in &self.overlays {
-            if let Some(new_overlay) = layer.consume(char_idx, |annot| annot.char_idx) {
-                overlay = Some((new_overlay, layer.metadata))
+            while let Some(new_overlay) = layer.consume(char_idx, |annot| annot.char_idx) {
+                overlay = Some((new_overlay, layer.metadata));
             }
         }
         overlay
