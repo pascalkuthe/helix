@@ -323,6 +323,8 @@ impl Theme {
             }
             if let Some(new_end) = scope.rfind('.') {
                 scope = &scope[..new_end];
+            }else{
+                return None
             }
         }
     }
