@@ -97,9 +97,12 @@ pub use {regex, tree_sitter};
 
 pub use graphemes::RopeGraphemes;
 pub use position::{
-    char_idx_at_visual_offset, coords_at_pos, pos_at_coords, pos_at_visual_coords,
-    visual_coords_at_pos, visual_offset_from_anchor, visual_offset_from_block, Position,
+    char_idx_at_visual_offset, coords_at_pos, pos_at_coords, visual_offset_from_anchor,
+    visual_offset_from_block, Position,
 };
+#[allow(deprecated)]
+pub use position::{pos_at_visual_coords, visual_coords_at_pos};
+
 pub use selection::{Range, Selection};
 pub use smallvec::{smallvec, SmallVec};
 pub use syntax::Syntax;

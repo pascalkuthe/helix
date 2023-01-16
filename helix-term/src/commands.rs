@@ -18,7 +18,7 @@ use helix_core::{
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
-    object, pos_at_coords, pos_at_visual_coords,
+    object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
     selection, shellwords, surround,
@@ -26,8 +26,8 @@ use helix_core::{
     textobject,
     tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
-    visual_coords_at_pos, visual_offset_from_block, LineEnding, Position, Range, Rope,
-    RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril, Transaction,
+    visual_offset_from_block, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice,
+    Selection, SmallVec, Tendril, Transaction,
 };
 use helix_view::{
     apply_transaction,
@@ -866,7 +866,10 @@ fn trim_selections(cx: &mut Context) {
 }
 
 // align text in selection
+#[allow(deprecated)]
 fn align_selections(cx: &mut Context) {
+    use helix_core::visual_coords_at_pos;
+
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
@@ -1534,7 +1537,10 @@ fn half_page_down(cx: &mut Context) {
     scroll(cx, offset, Direction::Forward);
 }
 
+#[allow(deprecated)]
 fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
+    use helix_core::{pos_at_visual_coords, visual_coords_at_pos};
+
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);

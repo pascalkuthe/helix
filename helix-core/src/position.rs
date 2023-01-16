@@ -75,6 +75,7 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 /// Takes \t, double-width characters (CJK) into account as well as text
 /// not in the document in the future.
 /// See [`coords_at_pos`] for an "objective" one.
+#[deprecated]
 pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Position {
     let line = text.char_to_line(pos);
 
@@ -213,6 +214,7 @@ pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending
 /// If the `column` coordinate is past the end of the given line, the
 /// line-end position (in this case, just before the line ending
 /// character) will be returned.
+#[deprecated]
 pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize) -> usize {
     let Position { mut row, col } = coords;
     row = row.min(text.len_lines() - 1);
@@ -415,6 +417,7 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_visual_coords_at_pos() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
         let slice = text.slice(..);
@@ -652,6 +655,7 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_pos_at_visual_coords() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
         let slice = text.slice(..);
