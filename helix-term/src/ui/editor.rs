@@ -609,10 +609,10 @@ impl EditorView {
                 let y = viewport.y + pos.visual_line;
 
                 let gutter_style = match (selected, pos.first_visual_line) {
-                    (false, false) => gutter_style,
-                    (true, false) => gutter_selected_style,
-                    (false, true) => gutter_style_virtual,
-                    (true, true) => gutter_selected_style_virtual,
+                    (false, true) => gutter_style,
+                    (true, true) => gutter_selected_style,
+                    (false, false) => gutter_style_virtual,
+                    (true, false) => gutter_selected_style_virtual,
                 };
 
                 if let Some(style) =
