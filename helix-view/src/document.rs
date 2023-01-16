@@ -1210,7 +1210,13 @@ impl Document {
         }
     }
 
-    pub fn text_format(&self, viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
+    pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
+        if let Some(max_line_len) = self
+            .language_config()
+            .and_then(|config| config.max_line_length)
+        {
+            viewport_width = viewport_width.min(max_line_len as u16)
+        }
         let config = self.config.load();
         let soft_wrap = &config.soft_wrap;
         let tab_width = self.tab_width() as u16;
@@ -1224,7 +1230,7 @@ impl Document {
             viewport_width,
             wrap_indicator: soft_wrap.wrap_indicator.clone().into_boxed_str(),
             wrap_indicator_highlight: theme
-                .and_then(|theme| theme.find_scope_index_exact("ui.virtual.whitespace"))
+                .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
                 .map(Highlight),
         }
     }
