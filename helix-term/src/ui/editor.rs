@@ -271,16 +271,19 @@ impl EditorView {
         text_annotations: &TextAnnotations,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
         let text = doc.text().slice(..);
+        let row = text.char_to_line(anchor.min(text.len_chars()));
 
         let range = {
-            let row = text.char_to_line(anchor);
-            let last_line = doc.text().len_lines().saturating_sub(1);
+            // Calculate viewport byte ranges:
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = text.len_lines().saturating_sub(1);
             let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-            let start = text.line_to_char(row.min(last_line));
-            let end = text.line_to_char(last_visible_line + 1);
+            let start = text.line_to_byte(row.min(last_line));
+            let end = text.line_to_byte(last_visible_line + 1);
 
             start..end
         };
+
         text_annotations.collect_overlay_highlights(range)
     }
 
