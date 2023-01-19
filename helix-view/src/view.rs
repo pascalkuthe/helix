@@ -331,7 +331,7 @@ impl View {
     #[inline]
     pub fn estimate_last_doc_line(&self, doc: &Document) -> usize {
         let doc_text = doc.text().slice(..);
-        let line = doc_text.char_to_line(self.offset.anchor);
+        let line = doc_text.char_to_line(self.offset.anchor.min(doc_text.len_chars()));
         // Saturating subs to make it inclusive zero indexing.
         (line + self.inner_height())
             .min(doc_text.len_lines())

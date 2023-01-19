@@ -159,7 +159,7 @@ impl<'t> DocumentFormatter<'t> {
         char_idx: usize,
     ) -> (Self, usize) {
         // TODO divide long lines into blocks to avoid bad performance for long lines
-        let block_line_idx = text.char_to_line(char_idx);
+        let block_line_idx = text.char_to_line(char_idx.min(text.len_chars()));
         let block_char_idx = text.line_to_char(block_line_idx);
         annotations.reset_pos(block_char_idx);
         (
