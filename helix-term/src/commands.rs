@@ -2003,7 +2003,7 @@ fn global_search(cx: &mut Context) {
                 return;
             }
 
-            let documents = editor.shared_documents();
+            let document_lookup = editor.document_content_lookup();
 
             if let Ok(matcher) = RegexMatcherBuilder::new()
                 .case_smart(smart_case)
@@ -2033,7 +2033,7 @@ fn global_search(cx: &mut Context) {
                         let mut searcher = searcher.clone();
                         let matcher = matcher.clone();
                         let all_matches_sx = all_matches_sx.clone();
-                        let documents = &documents;
+                        let document_lookup = &document_lookup;
                         Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
                             let entry = match entry {
                                 Ok(entry) => entry,
@@ -2053,11 +2053,11 @@ fn global_search(cx: &mut Context) {
 
                                 Ok(true)
                             });
-                            let doc = documents.clone().find(|(doc_path, _)| {
-                                doc_path.map_or(false, |doc_path| doc_path == entry.path())
-                            });
 
-                            let result = if let Some((_, doc)) = doc {
+                            let entry_path = &entry.path();
+                            let doc = document_lookup.get(entry_path);
+
+                            let result = if let Some(doc) = doc {
                                 // there is already a buffer for this file
                                 // search the buffer instead of the file because it's faster
                                 // and captures new edits without requireing a save

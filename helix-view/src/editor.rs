@@ -818,6 +818,14 @@ impl<'a> Iterator for SharedDocuments<'a> {
     }
 }
 
+pub struct DocumentContentLookup<'a>(BTreeMap<&'a Path, &'a Rope>);
+
+impl<'a> DocumentContentLookup<'a> {
+    pub fn get(&'a self, path: &'a Path) -> Option<&'a Rope> {
+        self.0.get(path).map(|x| *x)
+    }
+}
+
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
@@ -1508,6 +1516,19 @@ impl Editor {
     #[inline]
     pub fn shared_documents(&self) -> SharedDocuments {
         SharedDocuments(self.documents.values())
+    }
+
+    pub fn document_content_lookup(&self) -> DocumentContentLookup {
+        DocumentContentLookup(BTreeMap::from_iter(self.documents.values().filter_map(
+            |doc| {
+                // Omit documents without a path
+                if let Some(path_buf) = doc.path() {
+                    Some((path_buf.as_path(), doc.text()))
+                } else {
+                    None
+                }
+            },
+        )))
     }
 
     pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
