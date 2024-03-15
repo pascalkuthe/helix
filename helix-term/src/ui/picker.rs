@@ -470,7 +470,12 @@ impl<T: Item + 'static> Picker<T> {
                     let syntax = language_config
                         .highlight_config(&loader.load().scopes())
                         .and_then(|highlight_config| {
-                            Syntax::new(text.slice(..), highlight_config, loader)
+                            Syntax::new(text.slice(..), highlight_config, |injection| {
+                                loader
+                                    .load()
+                                    .language_configuration_for_injection_string(injection)
+                                    .and_then(|config| config.get_highlight_config())
+                            })
                         });
                     let callback = move |editor: &mut Editor, compositor: &mut Compositor| {
                         let Some(syntax) = syntax else {
