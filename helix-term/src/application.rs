@@ -4,7 +4,7 @@ use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
-    LspProgressMap,
+    LanguageServerId, LspProgressMap,
 };
 use helix_stdx::path::get_relative_path;
 use helix_view::{
@@ -655,7 +655,7 @@ impl Application {
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
-        server_id: usize,
+        server_id: LanguageServerId,
     ) {
         use helix_lsp::{Call, MethodCall, Notification};
 

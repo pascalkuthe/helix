@@ -30,6 +30,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub type Result<T> = core::result::Result<T, Error>;
 pub type LanguageServerName = String;
+pub use helix_core::diagnostic::LanguageServerId;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -642,8 +643,8 @@ impl Notification {
 pub struct Registry {
     inner: HashMap<LanguageServerName, Vec<Arc<Client>>>,
     syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>,
-    counter: usize,
-    pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
+    counter: u32,
+    pub incoming: SelectAll<UnboundedReceiverStream<(LanguageServerId, Call)>>,
     pub file_event_handler: file_event::Handler,
 }
 
@@ -658,7 +659,7 @@ impl Registry {
         }
     }
 
-    pub fn get_by_id(&self, id: usize) -> Option<&Client> {
+    pub fn get_by_id(&self, id: LanguageServerId) -> Option<&Client> {
         self.inner
             .values()
             .flatten()
@@ -666,7 +667,7 @@ impl Registry {
             .map(|client| &**client)
     }
 
-    pub fn remove_by_id(&mut self, id: usize) {
+    pub fn remove_by_id(&mut self, id: LanguageServerId) {
         self.file_event_handler.remove_client(id);
         self.inner.retain(|_, language_servers| {
             language_servers.retain(|ls| id != ls.id());
@@ -690,7 +691,7 @@ impl Registry {
         let id = self.counter;
         self.counter += 1;
         if let Some(NewClient(client, incoming)) = start_client(
-            id,
+            LanguageServerId::new(id),
             name,
             ls_config,
             config,
@@ -822,7 +823,7 @@ impl ProgressStatus {
 /// Acts as a container for progress reported by language servers. Each server
 /// has a unique id assigned at creation through [`Registry`]. This id is then used
 /// to store the progress in this map.
-pub struct LspProgressMap(HashMap<usize, HashMap<lsp::ProgressToken, ProgressStatus>>);
+pub struct LspProgressMap(HashMap<LanguageServerId, HashMap<lsp::ProgressToken, ProgressStatus>>);
 
 impl LspProgressMap {
     pub fn new() -> Self {
@@ -830,28 +831,35 @@ impl LspProgressMap {
     }
 
     /// Returns a map of all tokens corresponding to the language server with `id`.
-    pub fn progress_map(&self, id: usize) -> Option<&HashMap<lsp::ProgressToken, ProgressStatus>> {
+    pub fn progress_map(
+        &self,
+        id: LanguageServerId,
+    ) -> Option<&HashMap<lsp::ProgressToken, ProgressStatus>> {
         self.0.get(&id)
     }
 
-    pub fn is_progressing(&self, id: usize) -> bool {
+    pub fn is_progressing(&self, id: LanguageServerId) -> bool {
         self.0.get(&id).map(|it| !it.is_empty()).unwrap_or_default()
     }
 
     /// Returns last progress status for a given server with `id` and `token`.
-    pub fn progress(&self, id: usize, token: &lsp::ProgressToken) -> Option<&ProgressStatus> {
+    pub fn progress(
+        &self,
+        id: LanguageServerId,
+        token: &lsp::ProgressToken,
+    ) -> Option<&ProgressStatus> {
         self.0.get(&id).and_then(|values| values.get(token))
     }
 
     /// Checks if progress `token` for server with `id` is created.
-    pub fn is_created(&mut self, id: usize, token: &lsp::ProgressToken) -> bool {
+    pub fn is_created(&mut self, id: LanguageServerId, token: &lsp::ProgressToken) -> bool {
         self.0
             .get(&id)
             .map(|values| values.get(token).is_some())
             .unwrap_or_default()
     }
 
-    pub fn create(&mut self, id: usize, token: lsp::ProgressToken) {
+    pub fn create(&mut self, id: LanguageServerId, token: lsp::ProgressToken) {
         self.0
             .entry(id)
             .or_default()
@@ -861,7 +869,7 @@ impl LspProgressMap {
     /// Ends the progress by removing the `token` from server with `id`, if removed returns the value.
     pub fn end_progress(
         &mut self,
-        id: usize,
+        id: LanguageServerId,
         token: &lsp::ProgressToken,
     ) -> Option<ProgressStatus> {
         self.0.get_mut(&id).and_then(|vals| vals.remove(token))
@@ -870,7 +878,7 @@ impl LspProgressMap {
     /// Updates the progress of `token` for server with `id` to `status`, returns the value replaced or `None`.
     pub fn update(
         &mut self,
-        id: usize,
+        id: LanguageServerId,
         token: lsp::ProgressToken,
         status: lsp::WorkDoneProgress,
     ) -> Option<ProgressStatus> {
@@ -881,12 +889,12 @@ impl LspProgressMap {
     }
 }
 
-struct NewClient(Arc<Client>, UnboundedReceiver<(usize, Call)>);
+struct NewClient(Arc<Client>, UnboundedReceiver<(LanguageServerId, Call)>);
 
 /// start_client takes both a LanguageConfiguration and a LanguageServerConfiguration to ensure that
 /// it is only called when it makes sense.
 fn start_client(
-    id: usize,
+    id: LanguageServerId,
     name: String,
     config: &LanguageConfiguration,
     ls_config: &LanguageServerConfiguration,

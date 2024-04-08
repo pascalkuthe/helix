@@ -1,4 +1,6 @@
 //! LSP diagnostic utility types.
+use core::fmt;
+
 use serde::{Deserialize, Serialize};
 
 /// Describes the severity level of a [`Diagnostic`].
@@ -47,8 +49,34 @@ pub struct Diagnostic {
     pub message: String,
     pub severity: Option<Severity>,
     pub code: Option<NumberOrString>,
-    pub language_server_id: usize,
+    pub provider: DiagnosticProvider,
     pub tags: Vec<DiagnosticTag>,
     pub source: Option<String>,
     pub data: Option<serde_json::Value>,
+}
+
+// TODO turn this into an enum + feature flag when lsp becomes optional
+pub type DiagnosticProvider = LanguageServerId;
+
+// while I would prefe having this in helix-lsp that necessitates a bucnh of
+// conversions I would rather not add I think its file since this just a very
+// trivial newtype wrapper and we would need something similar once we define
+// completions in core
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct LanguageServerId(u32);
+
+impl LanguageServerId {
+    pub fn new(id: u32) -> LanguageServerId {
+        LanguageServerId(id)
+    }
+
+    pub fn id(self) -> u32 {
+        self.0
+    }
+}
+
+impl fmt::Display for LanguageServerId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
