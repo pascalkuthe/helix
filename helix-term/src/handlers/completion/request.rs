@@ -297,7 +297,6 @@ impl CompletionResponse {
         self.items.into_iter().map(move |item| CompletionItem {
             item,
             provider: self.provider,
-            incomplete_completion_list: self.incomplete,
             resolved: false,
             provider_priority: self.priority,
         })
@@ -318,6 +317,10 @@ fn request_completions_from_language_server(
     let pos = pos_to_lsp_pos(text, cursor, offset_encoding);
     let doc_id = doc.identifier();
 
+    log::error!(
+        "request completion at {}",
+        doc.selection(view).primary().fragment(doc.text().slice(..))
+    );
     let completion_response = ls.completion(doc_id, pos, None, context).unwrap();
     async move {
         let json = completion_response.await?;
@@ -349,6 +352,9 @@ pub fn request_incomplete_completion_list(
     incomplete_completion_lists: &mut HashMap<LanguageServerId, i8>,
     version: Arc<AtomicUsize>,
 ) {
+    if incomplete_completion_lists.is_empty() {
+        return;
+    }
     let (view, doc) = current_ref!(editor);
     let futures = FuturesUnordered::new();
     incomplete_completion_lists.retain(|&id, &mut priority| {
@@ -370,7 +376,6 @@ pub fn request_incomplete_completion_list(
     });
     let futures = futures.filter_map(|res: Result<_>| async {
         match res {
-            Ok(response) if response.items.is_empty() && !response.incomplete => None,
             Ok(response) => Some(response),
             Err(err) => {
                 log::debug!("completion request failed: {err:?}");
@@ -378,9 +383,10 @@ pub fn request_incomplete_completion_list(
             }
         }
     });
-    let inital_version = version.load(atomic::Ordering::Relaxed);
+    let initial_version = version.load(atomic::Ordering::Relaxed);
+    log::error!("requestion incomplete list {initial_version}");
     tokio::spawn(async move {
         pin!(futures);
-        replace_completions(version, inital_version, futures).await;
+        replace_completions(version, initial_version, futures).await;
     });
 }

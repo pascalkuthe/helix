@@ -227,6 +227,14 @@ impl<T: Item + PartialEq> Menu<T> {
 
 use super::PromptEvent as MenuEvent;
 
+pub trait MenuImplementation {
+    fn handle_event(&mut self, _event: &Event, _cx: &mut Context) -> EventResult {
+        EventResult::Ignored(None)
+    }
+
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {}
+}
+
 impl<T: Item + 'static> Component for Menu<T> {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event = match event {

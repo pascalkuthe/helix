@@ -37,7 +37,11 @@ mod resolve;
 pub struct CompletionItem {
     pub item: lsp::CompletionItem,
     pub provider: LanguageServerId,
-    pub incomplete_completion_list: bool,
+    // TODO: we should not be filtering and sorting incomplete completion list
+    // according to the spec but vscode does that anyway and most servers (
+    // including rust-analyzer) rely on that.. so we can't do that without
+    // breaking completions.
+    // pub incomplete_completion_list: bool,
     pub resolved: bool,
     pub provider_priority: i8,
 }
@@ -64,17 +68,24 @@ async fn replace_completions(
             break;
         }
         let version = version.clone();
-        dispatch(move |_editor, compositor| {
-            let ui = compositor.find::<ui::EditorView>().unwrap();
-            let Some(completion) = &mut ui.completion else {
+        dispatch(move |editor, compositor| {
+            let editor_view = compositor.find::<ui::EditorView>().unwrap();
+            let Some(completion) = &mut editor_view.completion else {
                 return;
-            };
+           };
             if !Arc::ptr_eq(&completion.version, &version)
                 || version.load(atomic::Ordering::Relaxed) != initial_version
             {
+                log::error!("dropping outdated filter {initial_version}");
                 return;
             }
             completion.replace_provider_completions(response);
+            if completion.is_empty() {
+                editor_view.clear_completion(editor);
+                // clearing completions might mean we want to immediately rerequest them (usually
+                // this occurs if typing a trigger char)
+                trigger_auto_completion(&editor.handlers.completions, editor, false);
+            }
         })
         .await;
     }
@@ -180,7 +191,7 @@ fn update_completion_filter(cx: &mut commands::Context, c: Option<char>) {
         let editor_view = compositor.find::<ui::EditorView>().unwrap();
         if let Some(completion) = &mut editor_view.completion {
             completion.update_filter(c);
-            if completion.is_empty() {
+            if completion.is_empty() || c.is_some_and(|c| !char_is_word(c)) {
                 editor_view.clear_completion(cx.editor);
                 // clearing completions might mean we want to immediately rerequest them (usually
                 // this occurs if typing a trigger char)
@@ -188,6 +199,7 @@ fn update_completion_filter(cx: &mut commands::Context, c: Option<char>) {
                     trigger_auto_completion(&cx.editor.handlers.completions, cx.editor, false);
                 }
             } else {
+                completion.version.fetch_add(1, atomic::Ordering::Relaxed);
                 request_incomplete_completion_list(
                     cx.editor,
                     &mut completion.incomplete_completion_lists,

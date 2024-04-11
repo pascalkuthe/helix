@@ -379,9 +379,6 @@ impl Completion {
         if incremental {
             matches.retain_mut(|(index, score)| {
                 let option = &options[*index as usize];
-                if option.incomplete_completion_list {
-                    return true;
-                }
                 let text = option
                     .item
                     .filter_text
@@ -399,9 +396,6 @@ impl Completion {
         } else {
             matches.clear();
             matches.extend(options.iter().enumerate().filter_map(|(i, option)| {
-                if option.incomplete_completion_list {
-                    return Some((i as u32, u32::MAX));
-                }
                 let text = option
                     .item
                     .filter_text
