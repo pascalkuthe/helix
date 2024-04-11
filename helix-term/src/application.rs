@@ -1030,12 +1030,7 @@ impl Application {
                         Ok(json!(result))
                     }
                     Ok(MethodCall::RegisterCapability(params)) => {
-                        if let Some(client) = self
-                            .editor
-                            .language_servers
-                            .iter_clients()
-                            .find(|client| client.id() == server_id)
-                        {
+                        if let Some(client) = self.editor.language_servers.get_by_id(server_id) {
                             for reg in params.registrations {
                                 match reg.method.as_str() {
                                     lsp::notification::DidChangeWatchedFiles::METHOD => {

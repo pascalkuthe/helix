@@ -1637,6 +1637,25 @@ impl Document {
         })
     }
 
+    pub fn language_servers_with_feature_owned(
+        &self,
+        feature: LanguageServerFeature,
+    ) -> impl Iterator<Item = Arc<helix_lsp::Client>> + '_ {
+        self.language_config().into_iter().flat_map(move |config| {
+            config.language_servers.iter().filter_map(move |features| {
+                let ls = self.language_servers.get(&features.name)?.clone();
+                if ls.is_initialized()
+                    && ls.supports_feature(feature)
+                    && features.has_feature(feature)
+                {
+                    Some(ls)
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
     pub fn supports_language_server(&self, id: LanguageServerId) -> bool {
         self.language_servers().any(|l| l.id() == id)
     }

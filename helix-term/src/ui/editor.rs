@@ -2,6 +2,7 @@ use crate::{
     commands::{self, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
     events::{OnModeSwitch, PostCommand},
+    handlers::completion::CompletionItem,
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
@@ -21,6 +22,7 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
+use helix_lsp::LanguageServerId;
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
@@ -29,12 +31,12 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
+use std::{collections::HashMap, mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
 use super::document::LineDecoration;
-use super::{completion::CompletionItem, statusline};
+use super::statusline;
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -1000,10 +1002,17 @@ impl EditorView {
         editor: &mut Editor,
         savepoint: Arc<SavePoint>,
         items: Vec<CompletionItem>,
+        incomplete_completion_lists: HashMap<LanguageServerId, i8>,
         trigger_offset: usize,
         size: Rect,
     ) -> Option<Rect> {
-        let mut completion = Completion::new(editor, savepoint, items, trigger_offset);
+        let mut completion = Completion::new(
+            editor,
+            savepoint,
+            items,
+            incomplete_completion_lists,
+            trigger_offset,
+        );
 
         if completion.is_empty() {
             // skip if we got no completion results

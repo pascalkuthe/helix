@@ -8,10 +8,9 @@ use crate::events;
 use crate::handlers::completion::CompletionHandler;
 use crate::handlers::signature_help::SignatureHelpHandler;
 
-pub use completion::trigger_auto_completion;
 pub use helix_view::handlers::Handlers;
 
-mod completion;
+pub mod completion;
 mod signature_help;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {

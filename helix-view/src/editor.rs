@@ -1253,7 +1253,9 @@ impl Editor {
         &self,
         language_server_id: LanguageServerId,
     ) -> Option<&helix_lsp::Client> {
-        self.language_servers.get_by_id(language_server_id)
+        self.language_servers
+            .get_by_id(language_server_id)
+            .map(|client| &**client)
     }
 
     /// Refreshes the language server for a given document

@@ -62,21 +62,12 @@ pub type DiagnosticProvider = LanguageServerId;
 // conversions I would rather not add I think its file since this just a very
 // trivial newtype wrapper and we would need something similar once we define
 // completions in core
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LanguageServerId(u32);
-
-impl LanguageServerId {
-    pub fn new(id: u32) -> LanguageServerId {
-        LanguageServerId(id)
-    }
-
-    pub fn id(self) -> u32 {
-        self.0
-    }
+slotmap::new_key_type! {
+    pub struct LanguageServerId;
 }
 
 impl fmt::Display for LanguageServerId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{:?}", self.0)
     }
 }
